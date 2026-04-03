@@ -13,6 +13,7 @@ export async function GET(req: NextRequest) {
 
   const lambdaRes = await fetch(`${lambdaUrl}?postSlug=${encodeURIComponent(postSlug)}`, {
     method: 'GET',
+    headers: { 'x-api-key': process.env.COMMENTS_API_KEY ?? '' },
     next: { revalidate: 0 }, // always fresh
   })
 
@@ -49,7 +50,10 @@ export async function POST(req: NextRequest) {
 
   const lambdaRes = await fetch(lambdaUrl, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 
+        'Content-Type': 'application/json',
+        'x-api-key': process.env.COMMENTS_API_KEY ?? '',
+    },
     body: JSON.stringify({ postSlug, authorName, body: commentBody }),
   })
 
