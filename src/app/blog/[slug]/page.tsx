@@ -5,6 +5,8 @@ import remarkGfm from "remark-gfm";
 import { getPost, getPostSlugs } from "@/lib/posts";
 import { mdxComponents } from "@/components/mdx-components";
 import { formatDate } from "@/lib/utils";
+import CommentForm from "@/components/comment-form";
+import CommentList from "@/components/comment-list";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -63,6 +65,9 @@ export default async function BlogPostPage({ params }: Props) {
           }}
         />
       </div>
+
+      <CommentForm postSlug={slug} />
+      <CommentList postSlug={slug} />
     </article>
   );
 }

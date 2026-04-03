@@ -16,9 +16,11 @@ node_modules
 # next.js
 .next/
 /out/
+dist/
 
 # production
 /build
+.serverless/
 
 # misc
 .DS_Store
