@@ -26,3 +26,33 @@ body {
   color: var(--foreground);
   font-family: var(--font-geist-sans), system-ui, sans-serif;
 }
+
+/* Allow img inside a .not-prose wrapper to be positioned via its parent */
+.not-prose img {
+  display: inline-block;
+}
+
+/* Secret Spiderman mode */
+body.spiderman-mode {
+  background-color: #7a0f0f !important;
+  --background: #7a0f0f93;
+}
+
+body.spiderman-mode,
+body.spiderman-mode * {
+  color: white !important;
+  font-family: cursive !important;
+  font-weight: 700 !important;
+}
+
+body.spiderman-mode h1,
+body.spiderman-mode h2,
+body.spiderman-mode h3,
+body.spiderman-mode h4,
+body.spiderman-mode h5,
+body.spiderman-mode h6,
+body.spiderman-mode a {
+  color: #60a5fa !important;
+  -webkit-text-stroke: 0.3px #60a5fa;
+  text-shadow: 0 0 1px rgba(0, 0, 139, 0.4);
+}

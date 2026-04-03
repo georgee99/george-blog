@@ -1,12 +1,14 @@
 import type { MDXComponents } from "mdx/types";
 import Link from "next/link";
 import type { ComponentPropsWithoutRef } from "react";
+import SpidermanToggle from "@/components/spiderman-toggle";
 
 /**
  * Override default HTML elements rendered by MDX.
  * Add more overrides here as needed (e.g. custom <img>, <h2>, etc.)
  */
 export const mdxComponents: MDXComponents = {
+  SpidermanToggle,
   // Internal links use Next.js Link; external links open in a new tab
   a: ({ href, children, ...props }: ComponentPropsWithoutRef<"a">) => {
     if (!href) return <a {...props}>{children}</a>;
