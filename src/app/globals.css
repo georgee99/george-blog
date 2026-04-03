@@ -41,8 +41,26 @@ body.spiderman-mode {
 body.spiderman-mode,
 body.spiderman-mode * {
   color: white !important;
-  font-family: cursive !important;
   font-weight: 700 !important;
+}
+
+/* Cursive font scoped to blog post/article content only */
+body.spiderman-mode article,
+body.spiderman-mode article *,
+body.spiderman-mode .prose,
+body.spiderman-mode .prose * {
+  font-family: "Apple Chancery", "URW Chancery L", "Brush Script MT", cursive !important;
+}
+
+/* Mobile: thicker cursive rendering for readability */
+@media (max-width: 768px) {
+  body.spiderman-mode article,
+  body.spiderman-mode article *,
+  body.spiderman-mode .prose,
+  body.spiderman-mode .prose * {
+    -webkit-text-stroke: 0.4px currentColor;
+    text-shadow: 0 0 2px rgba(255, 255, 255, 0.5);
+  }
 }
 
 body.spiderman-mode h1,
