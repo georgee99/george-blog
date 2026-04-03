@@ -1,0 +1,35 @@
+service: george-blog-comments
+
+provider:
+  name: aws
+  runtime: nodejs20.x
+  region: ${opt:region, 'ap-southeast-2'}
+  stage: ${opt:stage, 'prod'}
+  environment:
+    DATABASE_URL: ${env:DATABASE_URL}
+    SNS_TOPIC_ARN: ${env:SNS_TOPIC_ARN}
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - sns:Publish
+          Resource: ${env:SNS_TOPIC_ARN}
+
+plugins:
+  - serverless-plugin-typescript
+
+package:
+  individually: true
+  patterns:
+    - '!node_modules/**'
+
+functions:
+  createComment:
+    handler: handler.handler
+    description: Create a blog comment, save to PostgreSQL, notify via SNS
+    events:
+      - http:
+          path: /comments
+          method: post
+          cors: true
