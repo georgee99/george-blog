@@ -35,14 +35,18 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
   let comment;
   try {
     comment = await insertComment(postSlug, authorName, body);
+    console.log(`Comment created with ID ${comment.id} for post ${postSlug}`);
   } catch (err) {
     console.error('DB insert failed:', err);
     return json(500, { error: 'Failed to save comment' });
   }
 
-  // Publish to SNS — failure is non-fatal
+  // Publish to SNS — failure is non-fatal, timeout after 3s so it never blocks the response
   try {
-    await publishCommentCreated(postSlug, authorName, comment.created_at);
+    await Promise.race([
+      publishCommentCreated(postSlug, authorName, comment.created_at),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('SNS timeout')), 6000)),
+    ]);
   } catch (err) {
     console.error('SNS publish failed (non-fatal):', err);
   }

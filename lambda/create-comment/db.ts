@@ -22,6 +22,25 @@ export interface CreatedComment {
   created_at: Date;
 }
 
+export interface FetchedComment {
+  id: string;
+  author_name: string;
+  body: string;
+  created_at: Date;
+}
+
+export async function getComments(postSlug: string, limit: number): Promise<FetchedComment[]> {
+  const result = await getPool().query<FetchedComment>(
+    `SELECT id, author_name, body, created_at
+     FROM comments
+     WHERE post_slug = $1
+     ORDER BY created_at DESC
+     LIMIT $2`,
+    [postSlug, limit],
+  );
+  return result.rows;
+}
+
 export async function insertComment(
   postSlug: string,
   authorName: string,

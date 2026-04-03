@@ -14,8 +14,9 @@
     "@types/aws-lambda": "^8.10.0",
     "@types/node": "^20.0.0",
     "@types/pg": "^8.11.0",
+    "esbuild": "^0.20.0",
     "serverless": "^3.0.0",
-    "serverless-plugin-typescript": "^2.0.0",
+    "serverless-esbuild": "^1.0.0",
     "typescript": "^5.0.0"
   }
 }
