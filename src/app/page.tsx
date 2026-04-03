@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import Image from "next/image";
 import { getAllPosts } from "@/lib/posts";
 import { formatDate } from "@/lib/utils";
 import { siteConfig } from "@/lib/config";
@@ -56,6 +57,14 @@ export default function HomePage() {
           >
             All posts →
           </Link>
+          <Image
+            src="/meow/S3.png"
+            alt="meow"
+            width={168}
+            height={16}
+            className="mt-2 mx-auto"
+            aria-hidden="true"
+          />
         </section>
       )}
     </div>

@@ -16,10 +16,26 @@ export default function SpidermanToggle() {
     }
   }, [active])
 
+  const toggle = () => setActive((p) => !p)
+
   return (
     <span
-      onClick={() => setActive((prev) => !prev)}
-      style={{ cursor: 'pointer', fontWeight: 'bold', color: active ? 'red' : 'white' }}
+      role="button"
+      tabIndex={0}
+      onClick={toggle}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          toggle()
+        }
+      }}
+      aria-pressed={active}
+      className="cursor-pointer font-bold"
+      style={{
+        color: active ? 'red' : 'white',
+        fontFamily:
+          'var(--font-geist-sans), system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+      }}
       title="Click me..."
     >
       Spiderman
