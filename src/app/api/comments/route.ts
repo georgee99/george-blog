@@ -1,5 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+export async function GET(req: NextRequest) {
+  const lambdaUrl = process.env.COMMENTS_API_URL
+  if (!lambdaUrl) {
+    return NextResponse.json({ error: 'Comments service unavailable' }, { status: 503 })
+  }
+
+  const postSlug = req.nextUrl.searchParams.get('postSlug')
+  if (!postSlug) {
+    return NextResponse.json({ error: 'postSlug is required' }, { status: 400 })
+  }
+
+  const lambdaRes = await fetch(`${lambdaUrl}?postSlug=${encodeURIComponent(postSlug)}`, {
+    method: 'GET',
+    next: { revalidate: 0 }, // always fresh
+  })
+
+  const data = await lambdaRes.json().catch(() => ({}))
+  return NextResponse.json(data, { status: lambdaRes.status })
+}
+
 export async function POST(req: NextRequest) {
   const lambdaUrl = process.env.COMMENTS_API_URL
   if (!lambdaUrl) {

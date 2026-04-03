@@ -20,6 +20,7 @@ dist/
 
 # production
 /build
+.serverless/
 
 # misc
 .DS_Store
