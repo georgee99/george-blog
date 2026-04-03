@@ -52,14 +52,15 @@ body.spiderman-mode .prose * {
   font-family: "Apple Chancery", "URW Chancery L", "Brush Script MT", cursive !important;
 }
 
-/* Mobile: thicker cursive rendering for readability */
+/* Mobile: use Marker Felt — built-in iOS/macOS comic font, supports bold natively */
 @media (max-width: 768px) {
   body.spiderman-mode article,
   body.spiderman-mode article *,
   body.spiderman-mode .prose,
   body.spiderman-mode .prose * {
-    -webkit-text-stroke: 0.4px currentColor;
-    text-shadow: 0 0 2px rgba(255, 255, 255, 0.5);
+    font-family: "Marker Felt", "Chalkboard SE", "Comic Sans MS", fantasy !important;
+    -webkit-text-stroke: unset;
+    text-shadow: none;
   }
 }
 
