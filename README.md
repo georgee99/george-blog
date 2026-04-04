@@ -21,9 +21,10 @@ curl -o global-bundle.pem https://truststore.pki.rds.amazonaws.com/global/global
 ```
 
 ### Admin
-
 E.g. removing bad comments. Connect to the db using the psql command and run sql query manually
 
 ```
 Select * from comments where ....
+
+DELETE FROM comments WHERE id = 'abc123...';
 ```
