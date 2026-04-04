@@ -1,6 +1,12 @@
+import { seedCommentData } from '@/lib/seedData'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET(req: NextRequest) {
+  const isDev = process.env.NODE_ENV === 'development'
+  if (isDev) {
+    console.debug('Using seed comment data in development');
+    return NextResponse.json(seedCommentData)
+  }
   const lambdaUrl = process.env.COMMENTS_API_URL
   if (!lambdaUrl) {
     return NextResponse.json({ error: 'Comments service unavailable' }, { status: 503 })
@@ -46,6 +52,12 @@ export async function POST(req: NextRequest) {
       { error: 'Invalid request. Please check your input and try again.' },
       { status: 400 },
     )
+  }
+
+  // for development, we can just return the comment without saving
+  if (process.env.NODE_ENV === 'development') {
+    console.debug('Received comment (not saved in development):', { postSlug, authorName, body: commentBody })
+    return NextResponse.json({ message: 'Comment received (not saved in development)' })
   }
 
   const lambdaRes = await fetch(lambdaUrl, {
