@@ -57,14 +57,24 @@ export default function HomePage() {
           >
             All posts →
           </Link>
-          <Image
-            src="/meow/S3.png"
-            alt="meow"
-            width={168}
-            height={16}
-            className="mt-2 mx-auto"
-            aria-hidden="true"
-          />
+          <div className='flex flex-row items-center mt-10 gap-4'>
+            <Image
+              src="/meow/S3.png"
+              alt="meow"
+              width={168}
+              height={16}
+              className="mt-2 mx-auto"
+              aria-hidden="true"
+            />
+            <Image
+              src="/meow/M2.png"
+              alt="meow"
+              width={168}
+              height={16}
+              className="mt-2 mx-auto"
+              aria-hidden="true"
+            />
+          </div>
         </section>
       )}
     </div>
