@@ -32,9 +32,11 @@ export default function SpidermanToggle() {
       aria-pressed={active}
       className="cursor-pointer font-bold"
       style={{
-        color: active ? 'red' : 'white',
+        color: 'red',
         fontFamily:
           'var(--font-geist-sans), system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+        fontStyle: active ? 'normal' : 'italic',
+        textDecoration: active ? 'none' : 'underline',
       }}
       title="Click me..."
     >
