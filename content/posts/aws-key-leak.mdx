@@ -1,0 +1,41 @@
+---
+title: How we (almost) lost 15k on AWS
+date: 2026-04-05
+description: How we lost 15k on my first day of work
+published: true
+---
+
+Yeah you read the title right. On my first week of work in a team of only 4 software engineers, we had a heavy crisis to manage.
+I wasn't let in on all the details until later on though as I was still new.
+
+It happened on a Tuesday morning, when I tried to redeploy an AWS Lambda, but was denied permission. 
+I went to our technical lead to make changes to my IAM policy, he shut me down quickly and
+suspiciously, which was unlike his usual personality.
+
+A few days later, I was able to make changes to resources on AWS. I didn't question it (part of being a junior engineer). That was until 
+we all got an email saying that $15k had been credited to our account as reimbursment. I immediately turned around in my chair to another 
+developer and gave him a questionable look. He smirked and calmly said to me "There's something you should know".
+
+We were using a service called Grafana for our data, and part of the project requires setting up connection to AWS. By best practice, this is done 
+using IAM roles. However, someone decided to hadcode the AWS Key ID and Secret Access Key. On it's own, this isn't the end of the world. 
+It only became an issue when we host it on a publicly accessible server with no authentication or restrictions. The AWS Key and secret are stored in config 
+files, and once our instance became found, it didn't take long for attackers to find these keys. The final nail in the coffin was 
+that these keys were tied to an administrator account.
+
+I never got a chance to access AWS cost explorer to see what they spent the $15,000 on, but my best guess is some EC2 instances just for fun. Maybe even 
+some crypto mining. What mattered was how fast is happened. When I got the full story, after the reimbursement, we were all having a laugh. 
+In the moment though, I'm not sure if I would be reacting 
+that well. I need to give credit to our lead developer for remaining calm during this situation, and for getting us our money back.
+I don't think upper management ever found out what had happened. If they're somehow reading this, it's all a joke.
+
+One of the biggest takeaways from this was not to mess around with security. Take all the required steps, no matter how boring and inconvenient. 
+You need to assume that anything exposed to the internet will be found.
+
+<div className="not-prose">
+  <img
+    src="/meow/S1.png"
+    alt="My cat"
+    className="mx-auto block w-60"
+    style={{ height: "auto" }}
+  />
+</div>
