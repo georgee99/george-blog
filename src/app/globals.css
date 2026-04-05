@@ -29,7 +29,7 @@ body {
 
 /* Allow img inside a .not-prose wrapper to be positioned via its parent */
 .not-prose img {
-  display: inline-block;
+  display: block;
 }
 
 /* Secret Spiderman mode */
