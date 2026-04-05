@@ -20,7 +20,7 @@ const SearchBar: React.FC<{ onSearch: (query: string) => void }> = ({ onSearch }
                     setQuery(v);
                     onSearch(v);
                 }}
-                placeholder="Search..."
+                placeholder="Search"
                 className="border border-neutral-500 rounded-md p-2 w-full placeholder:text-neutral-500 focus:outline-none focus:ring-0 focus:shadow-none focus:border-neutral-400 focus:bg-transparent transition-colors"
             />
         </form>
