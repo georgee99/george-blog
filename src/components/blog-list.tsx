@@ -12,26 +12,60 @@ type Props = {
 
 export default function BlogList({ posts }: Props) {
   const [query, setQuery] = React.useState("");
+  const [selectedTag, setSelectedTag] = React.useState<string | null>(null);
 
-  const handleSearch = (q: string) => {
-    setQuery(q);
-  };
+  const allTags = React.useMemo(() => {
+    const tagSet = new Set<string>();
+    posts.forEach((p) => p.tags?.forEach((t) => tagSet.add(t)));
+    return Array.from(tagSet).sort();
+  }, [posts]);
 
   const filtered = React.useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return posts;
     return posts.filter((p) => {
-      return (
+      const matchesQuery =
+        !q ||
         p.title.toLowerCase().includes(q) ||
         p.description.toLowerCase().includes(q) ||
-        p.slug.toLowerCase().includes(q)
-      );
+        p.slug.toLowerCase().includes(q);
+      const matchesTag = !selectedTag || p.tags?.includes(selectedTag);
+      return matchesQuery && matchesTag;
     });
-  }, [posts, query]);
+  }, [posts, query, selectedTag]);
 
   return (
     <div>
-      <SearchBar onSearch={handleSearch} />
+      <SearchBar onSearch={setQuery} />
+
+      {allTags.length > 0 && (
+        <div className="flex flex-wrap gap-2 mb-8 w-3/4 mx-auto">
+          <button
+            onClick={() => setSelectedTag(null)}
+            aria-pressed={selectedTag === null}
+            className={`px-3 py-1 rounded-full text-xs border transition-colors ${
+              selectedTag === null
+                ? "bg-neutral-900 text-white border-neutral-900 dark:bg-neutral-100 dark:text-neutral-900 dark:border-neutral-100"
+                : "border-neutral-300 text-neutral-500 hover:border-neutral-400 hover:text-neutral-700 dark:border-neutral-700 dark:text-neutral-400 dark:hover:border-neutral-500 dark:hover:text-neutral-200"
+            }`}
+          >
+            all
+          </button>
+          {allTags.map((tag) => (
+            <button
+              key={tag}
+              onClick={() => setSelectedTag(tag === selectedTag ? null : tag)}
+              aria-pressed={tag === selectedTag}
+              className={`px-3 py-1 rounded-full text-xs border transition-colors ${
+                tag === selectedTag
+                  ? "bg-neutral-900 text-white border-neutral-900 dark:bg-neutral-100 dark:text-neutral-900 dark:border-neutral-100"
+                  : "border-neutral-300 text-neutral-500 hover:border-neutral-400 hover:text-neutral-700 dark:border-neutral-700 dark:text-neutral-400 dark:hover:border-neutral-500 dark:hover:text-neutral-200"
+              }`}
+            >
+              {tag}
+            </button>
+          ))}
+        </div>
+      )}
 
       {filtered.length === 0 ? (
         <p className="text-neutral-400">No posts found</p>

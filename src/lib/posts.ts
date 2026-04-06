@@ -10,6 +10,7 @@ export interface PostMeta {
   date: string;
   description: string;
   published: boolean;
+  tags: string[];
 }
 
 export interface Post {
@@ -42,6 +43,7 @@ function readPostMeta(slug: string): PostMeta {
     date: data.date ? new Date(data.date).toISOString() : "",
     description: data.description ?? "",
     published: data.published !== false,
+    tags: Array.isArray(data.tags) ? data.tags.map(String) : [],
   };
 }
 
@@ -56,6 +58,7 @@ export async function getPost(slug: string): Promise<Post | null> {
     date: data.date ? new Date(data.date).toISOString() : "",
     description: data.description ?? "",
     published: data.published !== false,
+    tags: Array.isArray(data.tags) ? data.tags.map(String) : [],
   };
   return { meta, source: content };
 }
