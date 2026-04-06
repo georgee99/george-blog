@@ -11,7 +11,7 @@ const SearchBar: React.FC<{ onSearch: (query: string) => void }> = ({ onSearch }
     };
 
     return (
-        <form onSubmit={handleSubmit} className="mb-10 w-3/4 mx-auto">
+        <form onSubmit={handleSubmit} className="mb-5 w-3/4 mx-auto">
             <input
                 type="text"
                 value={query}
