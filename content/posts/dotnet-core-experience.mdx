@@ -1,0 +1,72 @@
+---
+title: Engineering .NET Core - Patterns, Pitfalls, and Practical Tips
+date: 2026-04-08
+description: Overview of my experience with .NET Core
+published: true
+tags: ["tech", "coding"]
+---
+
+.NET (Dotnet) Core is a development platform created by Microsoft used to build 
+modern applications. It's used in lots of applications by tons of companies, especially those which are powered by the Microsoft ecosystem. 
+
+## My first time using it
+My first encounter with .NET was as an intern at my first job where I worked as a 
+full-stack developer. Initially, I was only tasked with frontend work, but after time 
+I was entrusted with backend development. The codebase wasn't as large as I expected. I 
+had read blogs and stories of large production codebases, but this wasn't too bad. We were using the ASP.NET Core Library within the .NET Core Runtime. It powered a web application that we were building. 
+
+## Project structure
+I wasn't too scared when I saw the project structure. I came from an Angular background, and there were some 
+similarities in how it was grouped. I also got a great rundown from our lead developer on the data 
+flow (shoutout to Brendan). We had split the backend into Controllers, Interfaces, Services, and Models (DTOs). 
+We followed the traditional MVC pattern, and did our best to adhere to SOLID development principles. 
+The file splitting that occurred as a result was a big reason why the project looked larger than it actually was, 
+and why I wasn't worried. We didn't follow a microservices approach, and just had a monolith application which 
+had numerous transient services injected into it.
+
+## First API I actually built with .NET
+The first API I actually built on my own was a personal project I was working on. I created a web app to track my 
+job applications. It had been two years since I worked on a .NET project, so I wanted to revise. With all the 
+experience I gained since then, I definitely understood the underlying concepts better, and how things worked 
+under the hood. I used the ASP.NET Core library for web application API. I followed a monolith architecture as 
+it was relatively simple and didn't need to scale it. I used the same project structure and used the same tools 
+that I already knew. I learnt some new things building it from scratch. I never actually understood the different 
+lifecycles in .NET as an intern.
+
+## Concepts which took a while to grasp
+This blog so far makes it seem like I handled .NET Core gracefully, but this is far from the truth. The truth is 
+that there were numerous hours spent staring at the screen not knowing what was going on. One of the main things 
+was the stack traces which .NET outputs. These traces are insanely long, which make readability very difficult. 
+The traces include the success logs, which is why spotting the error is hard. Now that we have AI, it is a lot easier. 
+
+Another thing which tripped me was LINQ. It seems easy to write, but getting the optimal pattern takes time. 
+It's easy to forget that LINQ methods are still queries, and that they should be optimised. 
+
+## Comparison with Spring
+I used Spring for just over a year as a graduate software engineer. I didn't have anything against it, but I do 
+prefer .NET for a few reasons.
+
+### Language & Syntax
+Java isn't my favourite language to write in. The syntax doesn't feel as smooth or new as C#. I have much higher tolerance for C#. I also prefer .NET Core annotations as opposed to Spring. This is just personal opinion though, nothing to do with performance
+
+### Repository Usage
+By best practice, Spring requires a Repository layer between the DB and Service. This is possible in .NET too, 
+but unnecessary as the DB Context has methods and features which perform the same actions as a repository does. 
+
+### Dependency Injection
+Dependency injection is quite similar in both. The main difference is that Spring registers these via annotations 
+as opposed to explicitly liked .NET. Spring also doesn't tend to use interfaces like .NET Core, but rather scans 
+and auto discovers on startup.
+                 
+## Would I use it again?
+.NET isn't the simplest framework to pick up, but it's incredibly powerful once it clicks. I wouldn't use it for 
+everything, but for scalable and large applications, it's definitely my go-to option.
+
+<div className="not-prose">
+  <img
+    src="/meow/S5.png"
+    alt="My cat"
+    className="mx-auto block w-50"
+    style={{ height: "auto" }}
+  />
+</div>
