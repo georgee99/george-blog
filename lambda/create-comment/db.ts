@@ -31,7 +31,7 @@ export async function getComments(postSlug: string): Promise<DynamoComment[]> {
       TableName: getTableName(),
       KeyConditionExpression: 'postSlug = :slug',
       ExpressionAttributeValues: { ':slug': postSlug },
-      ScanIndexForward: true, // commentId is time-sortable; ascending = oldest first
+      ScanIndexForward: false, 
     }),
   );
   return (result.Items ?? []) as DynamoComment[];

@@ -1,0 +1,42 @@
+name: Deploy Lambda
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'lambda/create-comment/**'
+
+jobs:
+  deploy:
+    name: Type-check and deploy
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: lambda/create-comment
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: lambda/create-comment/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type-check
+        run: npx tsc --noEmit
+
+      - name: Deploy
+        run: npx serverless deploy
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          DYNAMODB_TABLE_NAME: ${{ secrets.DYNAMODB_TABLE_NAME }}
+          DYNAMODB_TABLE_ARN: ${{ secrets.DYNAMODB_TABLE_ARN }}
+          SNS_TOPIC_ARN: ${{ secrets.SNS_TOPIC_ARN }}
