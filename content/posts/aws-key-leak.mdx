@@ -14,17 +14,17 @@ I went to our technical lead to make changes to my IAM policy, he shut me down q
 suspiciously, which was unlike his usual personality.
 
 A few days later, I was able to make changes to resources on AWS. I didn't question it (part of being a junior engineer). That was until 
-we all got an email saying that $15k had been credited to our account as reimbursment. I immediately turned around in my chair to another 
+we all got an email saying that $15k had been credited to our account as reimbursement. I immediately turned around in my chair to another 
 developer and gave him a questionable look. He smirked and calmly said to me "There's something you should know".
 
 We were using a service called Grafana for our data, and part of the project requires setting up connection to AWS. By best practice, this is done 
-using IAM roles. However, someone decided to hadcode the AWS Key ID and Secret Access Key. On it's own, this isn't the end of the world. 
+using IAM roles. However, someone decided to hardcode the AWS Key ID and Secret Access Key. On it's own, this isn't the end of the world. 
 It only became an issue when we host it on a publicly accessible server with no authentication or restrictions. The AWS Key and secret are stored in config 
 files, and once our instance became found, it didn't take long for attackers to find these keys. The final nail in the coffin was 
 that these keys were tied to an administrator account.
 
 I never got a chance to access AWS cost explorer to see what they spent the $15,000 on, but my best guess is some EC2 instances just for fun. Maybe even 
-some crypto mining. What mattered was how fast is happened. When I got the full story, after the reimbursement, we were all having a laugh. 
+some crypto mining. What mattered was how fast it happened. When I got the full story, after the reimbursement, we were all having a laugh. 
 In the moment though, I'm not sure if I would be reacting 
 that well. I need to give credit to our lead developer for remaining calm during this situation, and for getting us our money back.
 I don't think upper management ever found out what had happened. If they're somehow reading this, it's all a joke.
