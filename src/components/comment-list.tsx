@@ -3,10 +3,10 @@
 import { useEffect, useState } from 'react'
 
 interface Comment {
-  id: string
-  author_name: string
-  body: string
-  created_at: string
+  commentId: string
+  author: string
+  content: string
+  createdAt: string
 }
 
 interface CommentListProps {
@@ -44,13 +44,13 @@ export default function CommentList({ postSlug }: CommentListProps) {
       </h2>
       <ul className="space-y-6">
         {comments.map((comment) => (
-          <li key={comment.id} className="border-b border-neutral-100 pb-6 last:border-0 dark:border-neutral-800">
+          <li key={comment.commentId} className="border-b border-neutral-100 pb-6 last:border-0 dark:border-neutral-800">
             <div className="mb-1 flex items-baseline justify-between gap-4">
               <span className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
-                {comment.author_name}
+                {comment.author}
               </span>
-              <time className="shrink-0 text-xs text-neutral-400" dateTime={comment.created_at}>
-                {new Date(comment.created_at).toLocaleDateString('en-AU', {
+              <time className="shrink-0 text-xs text-neutral-400" dateTime={comment.createdAt}>
+                {new Date(comment.createdAt).toLocaleDateString('en-AU', {
                   day: 'numeric',
                   month: 'short',
                   year: 'numeric',
@@ -58,7 +58,7 @@ export default function CommentList({ postSlug }: CommentListProps) {
               </time>
             </div>
             <p className="text-sm leading-relaxed text-neutral-600 dark:text-neutral-400">
-              {comment.body}
+              {comment.content}
             </p>
           </li>
         ))}

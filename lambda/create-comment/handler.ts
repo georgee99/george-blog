@@ -31,20 +31,20 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
     body: string;
   };
 
-  // Insert into PostgreSQL
+  // Insert into DynamoDB
   let comment;
   try {
     comment = await insertComment(postSlug, authorName, body);
-    console.log(`Comment created with ID ${comment.id} for post ${postSlug}`);
+    console.log(`Comment created with ID ${comment.commentId} for post ${postSlug}`);
   } catch (err) {
     console.error('DB insert failed:', err);
     return json(500, { error: 'Failed to save comment' });
   }
 
-  // Publish to SNS — failure is non-fatal, timeout after 3s so it never blocks the response
+  // Publish to SNS — failure is non-fatal, timeout after 6s so it never blocks the response
   try {
     await Promise.race([
-      publishCommentCreated(postSlug, authorName, comment.created_at),
+      publishCommentCreated(postSlug, authorName, comment.createdAt),
       new Promise((_, reject) => setTimeout(() => reject(new Error('SNS timeout')), 6000)),
     ]);
   } catch (err) {
@@ -52,5 +52,5 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
   }
 
   // Return created comment ID
-  return json(201, { id: comment.id });
+  return json(201, { id: comment.commentId });
 };
