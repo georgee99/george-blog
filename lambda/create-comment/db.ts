@@ -1,56 +1,64 @@
-import { Pool } from 'pg';
+import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
+import { DynamoDBDocumentClient, PutCommand, QueryCommand } from '@aws-sdk/lib-dynamodb';
+import { randomUUID } from 'crypto';
 
-// Reuse the pool across warm Lambda invocations
-let pool: Pool | null = null;
+let docClient: DynamoDBDocumentClient | null = null;
 
-function getPool(): Pool {
-  if (!pool) {
-    pool = new Pool({
-      connectionString: process.env.DATABASE_URL,
-      ssl: { rejectUnauthorized: false },
-      max: 1, // Lambda: keep connection count low
-    });
+function getDocClient(): DynamoDBDocumentClient {
+  if (!docClient) {
+    docClient = DynamoDBDocumentClient.from(new DynamoDBClient({}));
   }
-  return pool;
+  return docClient;
 }
 
-export interface CreatedComment {
-  id: string;
-  post_slug: string;
-  author_name: string;
-  body: string;
-  created_at: Date;
+function getTableName(): string {
+  const name = process.env.DYNAMODB_TABLE_NAME;
+  if (!name) throw new Error('DYNAMODB_TABLE_NAME environment variable is not set');
+  return name;
 }
 
-export interface FetchedComment {
-  id: string;
-  author_name: string;
-  body: string;
-  created_at: Date;
+export interface DynamoComment {
+  postSlug: string;
+  commentId: string;
+  author: string;
+  content: string;
+  createdAt: string;
 }
 
-export async function getComments(postSlug: string, limit: number): Promise<FetchedComment[]> {
-  const result = await getPool().query<FetchedComment>(
-    `SELECT id, author_name, body, created_at
-     FROM comments
-     WHERE post_slug = $1
-     ORDER BY created_at DESC
-     LIMIT $2`,
-    [postSlug, limit],
+export async function getComments(postSlug: string): Promise<DynamoComment[]> {
+  const result = await getDocClient().send(
+    new QueryCommand({
+      TableName: getTableName(),
+      KeyConditionExpression: 'postSlug = :slug',
+      ExpressionAttributeValues: { ':slug': postSlug },
+      ScanIndexForward: true, // commentId is time-sortable; ascending = oldest first
+    }),
   );
-  return result.rows;
+  return (result.Items ?? []) as DynamoComment[];
 }
 
 export async function insertComment(
   postSlug: string,
-  authorName: string,
-  body: string,
-): Promise<CreatedComment> {
-  const result = await getPool().query<CreatedComment>(
-    `INSERT INTO comments (id, post_slug, author_name, body, created_at)
-     VALUES (gen_random_uuid(), $1, $2, $3, NOW())
-     RETURNING id, post_slug, author_name, body, created_at`,
-    [postSlug, authorName, body],
+  author: string,
+  content: string,
+): Promise<DynamoComment> {
+  const createdAt = new Date().toISOString();
+  const commentId = `${createdAt}#${randomUUID()}`;
+
+  const item: DynamoComment = {
+    postSlug,
+    commentId,
+    author,
+    content,
+    createdAt,
+  };
+
+  await getDocClient().send(
+    new PutCommand({
+      TableName: getTableName(),
+      Item: item,
+    }),
   );
-  return result.rows[0];
+
+  return item;
 }
