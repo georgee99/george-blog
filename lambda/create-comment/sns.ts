@@ -5,7 +5,7 @@ const sns = new SNSClient({});
 export async function publishCommentCreated(
   postSlug: string,
   authorName: string,
-  createdAt: Date,
+  createdAt: string,
 ): Promise<void> {
   const topicArn = process.env.SNS_TOPIC_ARN;
   if (!topicArn) {
@@ -19,7 +19,7 @@ export async function publishCommentCreated(
       Message: JSON.stringify({
         postSlug,
         authorName,
-        createdAt: createdAt.toISOString(),
+        createdAt,
       }),
     }),
   );
