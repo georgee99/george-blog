@@ -2,6 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(req: NextRequest) {
   const subscribeApiUrl = process.env.SUBSCRIBE_API_URL
+
+  const isDev = process.env.NODE_ENV === 'development'
+  if (isDev) {
+    console.debug('Received subscription request (not sent in development):', await req.json())
+    return NextResponse.json({ message: 'Subscription received (not sent in development)' })
+  }
+
   if (!subscribeApiUrl) {
     return NextResponse.json({ error: 'Subscription service unavailable' }, { status: 503 })
   }
