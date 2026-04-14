@@ -1,0 +1,50 @@
+---
+title: The Importance of Breaking Production
+date: 2026-04-14
+description: Why breaking production is a canon event
+published: true
+tags: ["work", "tech", "coding"]
+---
+
+For most engineers, breaking production feels like failure. In reality, it’s one of the fastest ways to get better.
+**Disclaimer**, don't go around intentionally breaking production, that's a quick way to get fired. That being said, 
+it's a canon event for junior/mid-level software engineers to develop new features which then break down an application. 
+This sounds bad in theory, but there's actually a lot of benefits towards your career development.
+
+### Why it actually matters
+You could have many different test environments, but nothing will match production. In production you'll 
+have many more users, a much higher scale, and unpredictable edge cases as a result. It's nearly impossible 
+to simulate everything in dev or staging. Having a feature break in production exposes blind spots in 
+monitoring, system design, and makes you rethink assumptions which on the surface look like general 
+knowledge.
+
+### What it teaches
+In any sort of work environment, breaking production as a junior or mid-level software engineer induces
+panic. One of the biggest outcomes of overcoming this is your responses to critical incidents. You stop 
+thinking about code in isolation and start thinking about systems under stress. 
+
+You also tend to learn a lot more about observability during these incidents. Logs, metrics, and alerts become 
+your best friend. Not only do you monitor these more frequently, but you start building them into your systems by default.
+
+Depending on the failure reason, you learn a bit about system design. If your feature worked in dev or staging
+environments, but failed in production, the reason was likely due to the way it integrated with production resources. 
+Concepts like fault tolerance, fallbacks, feature flags, and retries become more apparent to you. 
+
+### Impact awareness
+When production is down, stakeholders you didn’t know existed suddenly appear to notify the development team. This is 
+a good way to understand the impact of your application. It shifts your mindset to start 
+thinking in terms of what certain features are responsible for, and not just the code itself.
+
+### Final thoughts
+The goal is never to break production, but if you avoid it at all costs, it'll lead to a fragile system and 
+slow-moving teams. The real objective is to build software with the expectation that failure will happen. When 
+handled properly, production incidents sharpen observability, and improve design decisions.
+
+<div className="not-prose">
+  <img
+    src="/meow/S7.png"
+    alt="me when i crash prod"
+    className="mx-auto block w-50"
+    style={{ height: "auto" }}
+  />
+</div>
