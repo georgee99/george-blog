@@ -1,0 +1,67 @@
+service: george-blog-subscribe
+
+provider:
+  name: aws
+  runtime: nodejs20.x
+  region: ${opt:region, 'ap-southeast-2'}
+  stage: ${opt:stage, 'prod'}
+  environment:
+    SUBSCRIBERS_TABLE_NAME: ${env:SUBSCRIBERS_TABLE_NAME}
+    SES_SENDER_EMAIL: ${env:SES_SENDER_EMAIL}
+    SITE_BASE_URL: ${env:SITE_BASE_URL}
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+            - dynamodb:UpdateItem
+            - dynamodb:Scan
+          Resource: ${env:SUBSCRIBERS_TABLE_ARN}
+        - Effect: Allow
+          Action:
+            - ses:SendEmail
+          Resource: '*'
+
+plugins:
+  - serverless-esbuild
+
+custom:
+  esbuild:
+    bundle: true
+    minify: false
+    sourcemap: true
+    platform: node
+    target: node20
+    exclude:
+      - '@aws-sdk/*'
+
+package:
+  individually: true
+
+functions:
+  subscribe:
+    handler: subscribe.handler
+    description: Subscribe an email address, save to DynamoDB, send confirmation email via SES
+    timeout: 10
+    events:
+      - http:
+          path: /subscribe
+          method: post
+          cors: true
+
+  confirm:
+    handler: confirm.handler
+    description: Confirm an email subscription
+    timeout: 10
+    events:
+      - http:
+          path: /subscribe/confirm
+          method: get
+          cors: true
+
+  notifySubscribers:
+    handler: notify.handler
+    description: Send an email to all confirmed subscribers — invoke manually via AWS Console Test tab
+    timeout: 60

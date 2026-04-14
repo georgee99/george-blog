@@ -1,0 +1,21 @@
+{
+  "name": "subscribe",
+  "version": "1.0.0",
+  "description": "Lambda handlers for blog email subscriptions",
+  "scripts": {
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.0.0",
+    "@aws-sdk/client-ses": "^3.0.0",
+    "@aws-sdk/lib-dynamodb": "^3.0.0"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.0",
+    "@types/node": "^20.0.0",
+    "esbuild": "^0.20.0",
+    "serverless": "^3.0.0",
+    "serverless-esbuild": "^1.0.0",
+    "typescript": "^5.0.0"
+  }
+}

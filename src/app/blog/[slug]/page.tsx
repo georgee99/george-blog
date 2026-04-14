@@ -7,6 +7,7 @@ import { mdxComponents } from "@/components/mdx-components";
 import { formatDate } from "@/lib/utils";
 import CommentForm from "@/components/comment-form";
 import CommentList from "@/components/comment-list";
+import SubscribeForm from "@/components/subscribe-form";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -68,6 +69,7 @@ export default async function BlogPostPage({ params }: Props) {
 
       <CommentForm postSlug={slug} />
       <CommentList postSlug={slug} />
+      <SubscribeForm source="blogpage"/>
     </article>
   );
 }
