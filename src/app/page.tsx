@@ -4,6 +4,7 @@ import Image from "next/image";
 import { getAllPosts } from "@/lib/posts";
 import { formatDate } from "@/lib/utils";
 import { siteConfig } from "@/lib/config";
+import SubscribeForm from "@/components/subscribe-form";
 
 export const metadata: Metadata = {
   title: siteConfig.name,
@@ -77,6 +78,8 @@ export default function HomePage() {
           </div>
         </section>
       )}
+
+      <SubscribeForm source="homepage"/>
     </div>
   );
 }
