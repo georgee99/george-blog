@@ -17,6 +17,7 @@ provider:
             - dynamodb:GetItem
             - dynamodb:PutItem
             - dynamodb:UpdateItem
+            - dynamodb:Scan
           Resource: ${env:SUBSCRIBERS_TABLE_ARN}
         - Effect: Allow
           Action:
@@ -59,3 +60,8 @@ functions:
           path: /subscribe/confirm
           method: get
           cors: true
+
+  notifySubscribers:
+    handler: notify.handler
+    description: Send an email to all confirmed subscribers — invoke manually via AWS Console Test tab
+    timeout: 60
