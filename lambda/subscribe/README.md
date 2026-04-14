@@ -2,13 +2,17 @@
 
 To email all confirmed subscribers when a new post is published:
 
-1. Open the [AWS Lambda console](https://ap-southeast-2.console.aws.amazon.com/lambda/home?region=ap-southeast-2#/functions) and find the function **`george-blog-subscribe-prod-notifySubscribers`**
-2. Click the **Test** tab
-3. Create a new test event with this JSON (edit subject and body as needed):
-   ```json
-   {
-     "subject": "New post on George's Blog",
-     "body": "Hey,\n\nI just published a new post: https://georgeelz.blog/blog/your-post-slug\n\nGeorge"
-   }
+1. Generate the test event JSON from the repo root:
+   ```bash
+   npm run generate-email-html-default
    ```
-4. Click **Test** — the function will email every confirmed subscriber and return `{ "sent": N, "emails": [...] }`
+   Or with a specific post slug:
+   ```bash
+   npm run generate-email-html -- --slug my-post-slug --subject "New post on George's Blog" --author "George"
+   ```
+   This saves the JSON to `scripts/generate-email/email-test.json` and prints it to the terminal.
+
+2. Open the [AWS Lambda console](https://ap-southeast-2.console.aws.amazon.com/lambda/home?region=ap-southeast-2#/functions) and find the function **`george-blog-subscribe-prod-notifySubscribers`**
+3. Click the **Test** tab
+4. Paste the generated JSON into the test event body.
+5. Click **Test** — the function will email every confirmed subscriber and return `{ "sent": N, "emails": [...] }`
