@@ -4,7 +4,8 @@
   "description": "Lambda handler for creating blog comments",
   "main": "dist/handler.js",
   "scripts": {
-    "build": "tsc"
+    "build": "tsc",
+    "deploy": "dotenv -e ../../.env.local -- serverless deploy"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.0.0",
@@ -12,6 +13,7 @@
     "@aws-sdk/lib-dynamodb": "^3.0.0"
   },
   "devDependencies": {
+    "dotenv-cli": "^7.0.0",
     "@types/aws-lambda": "^8.10.0",
     "@types/node": "^20.19.39",
     "esbuild": "^0.20.0",
