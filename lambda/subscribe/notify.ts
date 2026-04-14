@@ -21,6 +21,7 @@ function getSenderEmail(): string {
 interface NotifyPayload {
   subject: string;
   body: string;
+  html?: string;
 }
 
 async function getConfirmedSubscribers(): Promise<Subscriber[]> {
@@ -45,7 +46,7 @@ async function getConfirmedSubscribers(): Promise<Subscriber[]> {
 }
 
 export const handler = async (event: NotifyPayload): Promise<{ sent: number; emails: string[] }> => {
-  const { subject, body } = event;
+  const { subject, body, html } = event;
 
   if (!subject || !body) {
     throw new Error('Payload must include "subject" and "body"');
@@ -63,14 +64,21 @@ export const handler = async (event: NotifyPayload): Promise<{ sent: number; ema
   const sent: string[] = [];
 
   for (const sub of subscribers) {
+    const message = html
+      ? {
+          Subject: { Data: subject },
+          Body: { Text: { Data: body }, Html: { Data: html } },
+        }
+      : {
+          Subject: { Data: subject },
+          Body: { Text: { Data: body } },
+        };
+
     await ses.send(
       new SendEmailCommand({
         Source: getSenderEmail(),
         Destination: { ToAddresses: [sub.email] },
-        Message: {
-          Subject: { Data: subject },
-          Body: { Text: { Data: body } },
-        },
+        Message: message,
       }),
     );
     sent.push(sub.email);

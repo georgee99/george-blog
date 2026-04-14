@@ -1,12 +1,17 @@
 {
   "name": "george-blog",
   "version": "0.1.0",
+  "type": "module",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "generate-email": "tsx scripts/generate-email/generate-email.ts",
+    "generate-email-default": "tsx scripts/generate-email/generate-email.ts --slug your-post-slug --author \"George\"",
+    "generate-email-html": "tsx scripts/generate-email/generate-email.ts --use-default-html",
+    "generate-email-html-default": "tsx scripts/generate-email/generate-email.ts --use-default-html --slug your-post-slug --author \"George\""
   },
   "dependencies": {
     "gray-matter": "^4.0.3",
@@ -27,6 +32,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.1",
     "tailwindcss": "^4",
+    "tsx": "^4.21.0",
     "typescript": "^5"
   }
 }

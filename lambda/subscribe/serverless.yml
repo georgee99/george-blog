@@ -18,7 +18,7 @@ provider:
             - dynamodb:PutItem
             - dynamodb:UpdateItem
             - dynamodb:Scan
-          Resource: ${env:SUBSCRIBERS_TABLE_ARN}
+          Resource: !Sub "arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${env:SUBSCRIBERS_TABLE_NAME}"
         - Effect: Allow
           Action:
             - ses:SendEmail
