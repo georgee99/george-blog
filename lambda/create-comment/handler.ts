@@ -25,16 +25,17 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
     return json(400, { error: validation.error });
   }
 
-  const { postSlug, authorName, body } = parsed as {
+  const { postSlug, authorName, body, parentId } = parsed as {
     postSlug: string;
     authorName: string;
     body: string;
+    parentId?: string;
   };
 
   // Insert into DynamoDB
   let comment;
   try {
-    comment = await insertComment(postSlug, authorName, body);
+    comment = await insertComment(postSlug, authorName, body, parentId);
     console.log(`Comment created with ID ${comment.commentId} for post ${postSlug}`);
   } catch (err) {
     console.error('DB insert failed:', err);
