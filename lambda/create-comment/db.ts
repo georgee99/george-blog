@@ -23,6 +23,7 @@ export interface DynamoComment {
   author: string;
   content: string;
   createdAt: string;
+  parentId?: string;
 }
 
 export async function getComments(postSlug: string): Promise<DynamoComment[]> {
@@ -41,6 +42,7 @@ export async function insertComment(
   postSlug: string,
   author: string,
   content: string,
+  parentId?: string,
 ): Promise<DynamoComment> {
   const createdAt = new Date().toISOString();
   const commentId = `${createdAt}#${randomUUID()}`;
@@ -51,6 +53,7 @@ export async function insertComment(
     author,
     content,
     createdAt,
+    ...(parentId ? { parentId } : {}),
   };
 
   await getDocClient().send(

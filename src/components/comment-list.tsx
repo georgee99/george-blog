@@ -1,29 +1,51 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
+import CommentForm from './comment-form'
 
-interface Comment {
+export interface Comment {
   commentId: string
   author: string
   content: string
   createdAt: string
+  parentId?: string
+}
+
+interface CommentThread {
+  comment: Comment
+  replies: Comment[]
 }
 
 interface CommentListProps {
   postSlug: string
+  comments: Comment[]
+  loading: boolean
+  onRefetch: () => void
 }
 
-export default function CommentList({ postSlug }: CommentListProps) {
-  const [comments, setComments] = useState<Comment[]>([])
-  const [loading, setLoading] = useState(true)
+function buildThreads(comments: Comment[]): CommentThread[] {
+  const topLevel = comments
+    .filter((c) => !c.parentId)
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt)) // newest first
 
-  useEffect(() => {
-    fetch(`/api/comments?postSlug=${encodeURIComponent(postSlug)}`)
-      .then((res) => res.json())
-      .then((data) => setComments(data.comments ?? []))
-      .catch(() => setComments([]))
-      .finally(() => setLoading(false))
-  }, [postSlug])
+  return topLevel.map((comment) => ({
+    comment,
+    replies: comments
+      .filter((c) => c.parentId === comment.commentId)
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt)), // oldest first
+  }))
+}
+
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleDateString('en-AU', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  })
+}
+
+export default function CommentList({ postSlug, comments, loading, onRefetch }: CommentListProps) {
+  const [replyingTo, setReplyingTo] = useState<string | null>(null)
 
   if (loading) {
     return (
@@ -35,7 +57,9 @@ export default function CommentList({ postSlug }: CommentListProps) {
     )
   }
 
-  if (comments.length === 0) return null
+  const threads = buildThreads(comments)
+
+  if (threads.length === 0) return null
 
   return (
     <section className="mt-10">
@@ -43,23 +67,67 @@ export default function CommentList({ postSlug }: CommentListProps) {
         Comments
       </h2>
       <ul className="space-y-6">
-        {comments.map((comment) => (
+        {threads.map(({ comment, replies }) => (
           <li key={comment.commentId} className="border-b border-neutral-100 pb-6 last:border-0 dark:border-neutral-800">
+            {/* Top-level comment */}
             <div className="mb-1 flex items-baseline justify-between gap-4">
               <span className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
                 {comment.author}
               </span>
               <time className="shrink-0 text-xs text-neutral-400" dateTime={comment.createdAt}>
-                {new Date(comment.createdAt).toLocaleDateString('en-AU', {
-                  day: 'numeric',
-                  month: 'short',
-                  year: 'numeric',
-                })}
+                {formatDate(comment.createdAt)}
               </time>
             </div>
             <p className="text-sm leading-relaxed text-neutral-600 dark:text-neutral-400">
               {comment.content}
             </p>
+
+            {/* Reply button */}
+            {replyingTo !== comment.commentId && (
+              <button
+                onClick={() => setReplyingTo(comment.commentId)}
+                className="mt-2 text-xs text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300"
+              >
+                Reply
+              </button>
+            )}
+
+            {/* Inline reply form */}
+            {replyingTo === comment.commentId && (
+              <div className="mt-4">
+                <CommentForm
+                  postSlug={postSlug}
+                  parentId={comment.commentId}
+                  compact
+                  onSuccess={() => {
+                    setReplyingTo(null)
+                    onRefetch()
+                  }}
+                  onCancel={() => setReplyingTo(null)}
+                />
+              </div>
+            )}
+
+            {/* Replies */}
+            {replies.length > 0 && (
+              <ul className="mt-4 space-y-4 border-l-2 border-neutral-100 pl-4 dark:border-neutral-800">
+                {replies.map((reply) => (
+                  <li key={reply.commentId}>
+                    <div className="mb-1 flex items-baseline justify-between gap-4">
+                      <span className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
+                        {reply.author}
+                      </span>
+                      <time className="shrink-0 text-xs text-neutral-400" dateTime={reply.createdAt}>
+                        {formatDate(reply.createdAt)}
+                      </time>
+                    </div>
+                    <p className="text-sm leading-relaxed text-neutral-600 dark:text-neutral-400">
+                      {reply.content}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            )}
           </li>
         ))}
       </ul>
