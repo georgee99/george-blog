@@ -5,8 +5,7 @@ import remarkGfm from "remark-gfm";
 import { getPost, getPostSlugs } from "@/lib/posts";
 import { mdxComponents } from "@/components/mdx-components";
 import { formatDate } from "@/lib/utils";
-import CommentForm from "@/components/comment-form";
-import CommentList from "@/components/comment-list";
+import CommentsSection from "@/components/comments-section";
 import SubscribeForm from "@/components/subscribe-form";
 
 interface Props {
@@ -67,8 +66,7 @@ export default async function BlogPostPage({ params }: Props) {
         />
       </div>
 
-      <CommentForm postSlug={slug} />
-      <CommentList postSlug={slug} />
+      <CommentsSection postSlug={slug} />
       <SubscribeForm source="blogpage"/>
     </article>
   );
