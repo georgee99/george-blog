@@ -1,6 +1,6 @@
-import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
+﻿import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, ScanCommand } from '@aws-sdk/lib-dynamodb';
-import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses';
+import { SESClient, SendRawEmailCommand } from '@aws-sdk/client-ses';
 import { Subscriber } from './db';
 
 const dynamo = DynamoDBDocumentClient.from(new DynamoDBClient({}));
@@ -16,6 +16,12 @@ function getSenderEmail(): string {
   const email = process.env.SES_SENDER_EMAIL;
   if (!email) throw new Error('SES_SENDER_EMAIL environment variable is not set');
   return email;
+}
+
+function getSiteBaseUrl(): string {
+  const url = process.env.SITE_BASE_URL;
+  if (!url) throw new Error('SITE_BASE_URL environment variable is not set');
+  return url.replace(/\/$/, '');
 }
 
 interface NotifyPayload {
@@ -45,13 +51,71 @@ async function getConfirmedSubscribers(): Promise<Subscriber[]> {
   return subscribers;
 }
 
-export const handler = async (event: NotifyPayload): Promise<{ sent: number; emails: string[] }> => {
+function buildUnsubscribeUrl(siteBaseUrl: string, email: string, token: string): string {
+  return (
+    `${siteBaseUrl}/api/subscribe/unsubscribe` +
+    `?email=${encodeURIComponent(email)}&token=${encodeURIComponent(token)}`
+  );
+}
+
+function injectUnsubscribeFooter(html: string, unsubscribeUrl: string): string {
+  if (html.includes('href="https://georgeelz.blog/unsubscribe"')) {
+    return html.replace(
+      /href="https:\/\/georgeelz\.blog\/unsubscribe"/g,
+      `href="${unsubscribeUrl}"`,
+    );
+  }
+  return html.replace(
+    '</body>',
+    `<table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:12px;font-size:11px;color:#999999;">` +
+      `<a href="${unsubscribeUrl}" style="color:#111111;">Unsubscribe</a>` +
+      `</td></tr></table></body>`,
+  );
+}
+
+function buildRawEmail(opts: {
+  from: string;
+  to: string;
+  subject: string;
+  plain: string;
+  html?: string;
+  unsubscribeUrl: string;
+}): string {
+  const boundary = `boundary_${Date.now()}`;
+  const lines: string[] = [
+    `From: ${opts.from}`,
+    `To: ${opts.to}`,
+    `Subject: ${opts.subject}`,
+    `MIME-Version: 1.0`,
+    `List-Unsubscribe: <${opts.unsubscribeUrl}>`,
+    `List-Unsubscribe-Post: List-Unsubscribe=One-Click`,
+    `Content-Type: multipart/alternative; boundary="${boundary}"`,
+    ``,
+    `--${boundary}`,
+    `Content-Type: text/plain; charset=UTF-8`,
+    ``,
+    opts.plain,
+  ];
+
+  if (opts.html) {
+    lines.push(`--${boundary}`, `Content-Type: text/html; charset=UTF-8`, ``, opts.html);
+  }
+
+  lines.push(`--${boundary}--`);
+  return lines.join('\r\n');
+}
+
+export const handler = async (
+  event: NotifyPayload,
+): Promise<{ sent: number; emails: string[] }> => {
   const { subject, body, html } = event;
 
   if (!subject || !body) {
     throw new Error('Payload must include "subject" and "body"');
   }
 
+  const siteBaseUrl = getSiteBaseUrl();
+  const from = getSenderEmail();
   const subscribers = await getConfirmedSubscribers();
 
   if (subscribers.length === 0) {
@@ -64,21 +128,22 @@ export const handler = async (event: NotifyPayload): Promise<{ sent: number; ema
   const sent: string[] = [];
 
   for (const sub of subscribers) {
-    const message = html
-      ? {
-          Subject: { Data: subject },
-          Body: { Text: { Data: body }, Html: { Data: html } },
-        }
-      : {
-          Subject: { Data: subject },
-          Body: { Text: { Data: body } },
-        };
+    const unsubscribeUrl = buildUnsubscribeUrl(siteBaseUrl, sub.email, sub.confirmationToken);
+    const plain = `${body}\n\nUnsubscribe: ${unsubscribeUrl}`;
+    const htmlWithFooter = html ? injectUnsubscribeFooter(html, unsubscribeUrl) : undefined;
+
+    const rawEmail = buildRawEmail({
+      from,
+      to: sub.email,
+      subject,
+      plain,
+      html: htmlWithFooter,
+      unsubscribeUrl,
+    });
 
     await ses.send(
-      new SendEmailCommand({
-        Source: getSenderEmail(),
-        Destination: { ToAddresses: [sub.email] },
-        Message: message,
+      new SendRawEmailCommand({
+        RawMessage: { Data: Buffer.from(rawEmail) },
       }),
     );
     sent.push(sub.email);
