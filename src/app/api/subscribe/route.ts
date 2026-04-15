@@ -9,6 +9,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ message: 'Subscription received (not sent in development)' })
   }
 
+  if (process.env.SUBSCRIBE_ENABLED === 'false') {
+    return NextResponse.json({
+      message: "Subscriptions aren't available yet, the boss man needs proof that I'm real first",
+    })
+  }
+
   if (!subscribeApiUrl) {
     return NextResponse.json({ error: 'Subscription service unavailable' }, { status: 503 })
   }
