@@ -22,6 +22,7 @@ provider:
         - Effect: Allow
           Action:
             - ses:SendEmail
+            - ses:SendRawEmail
           Resource: '*'
 
 plugins:
@@ -39,6 +40,21 @@ custom:
 
 package:
   individually: true
+
+resources:
+  Resources:
+    SESBounceComplaintTopic:
+      Type: AWS::SNS::Topic
+      Properties:
+        TopicName: george-blog-ses-bounce-complaint-${opt:stage, 'prod'}
+
+  Outputs:
+    SESBounceComplaintTopicArn:
+      Value: !Ref SESBounceComplaintTopic
+      Description: >
+        ARN of the SNS topic for SES bounce/complaint notifications.
+        Go to SES Console > Verified identities > your domain > Notifications
+        and set both Bounces and Complaints to this topic ARN.
 
 functions:
   subscribe:
@@ -61,7 +77,27 @@ functions:
           method: get
           cors: true
 
+  unsubscribe:
+    handler: unsubscribe.handler
+    description: Unsubscribe an email address via tokenised link
+    timeout: 10
+    events:
+      - http:
+          path: /subscribe/unsubscribe
+          method: get
+          cors: true
+
+  bounceHandler:
+    handler: bounce-handler.handler
+    description: Handles SES bounce and complaint SNS notifications — marks subscribers as bounced/complained in DynamoDB
+    timeout: 30
+    events:
+      - sns:
+          arn: !Ref SESBounceComplaintTopic
+          topicName: george-blog-ses-bounce-complaint-${opt:stage, 'prod'}
+
   notifySubscribers:
     handler: notify.handler
     description: Send an email to all confirmed subscribers — invoke manually via AWS Console Test tab
     timeout: 60
+

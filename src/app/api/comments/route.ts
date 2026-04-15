@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Basic validation
-  const { postSlug, authorName, body: commentBody } = (body ?? {}) as Record<string, unknown>
+  const { postSlug, authorName, body: commentBody, parentId } = (body ?? {}) as Record<string, unknown>
   if (
     !postSlug || typeof postSlug !== 'string' ||
     !authorName || typeof authorName !== 'string' ||
@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
 
   // for development, we can just return the comment without saving
   if (process.env.NODE_ENV === 'development') {
-    console.debug('Received comment (not saved in development):', { postSlug, authorName, body: commentBody })
+    console.debug('Received comment (not saved in development):', { postSlug, authorName, body: commentBody, parentId })
     return NextResponse.json({ message: 'Comment received (not saved in development)' })
   }
 
@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
         'Content-Type': 'application/json',
         'x-api-key': process.env.COMMENTS_API_KEY ?? '',
     },
-    body: JSON.stringify({ postSlug, authorName, body: commentBody }),
+    body: JSON.stringify({ postSlug, authorName, body: commentBody, ...(parentId ? { parentId } : {}) }),
   })
 
   const data = await lambdaRes.json().catch(() => ({}))

@@ -2,6 +2,7 @@ export interface CommentInput {
   postSlug: string;
   authorName: string;
   body: string;
+  parentId?: string;
 }
 
 export interface ValidationResult {
@@ -26,6 +27,11 @@ export function validateCommentInput(data: unknown): ValidationResult {
 
   if (!body || typeof body !== 'string' || body.trim() === '') {
     return { valid: false, error: 'body is required and must be a non-empty string' };
+  }
+
+  const { parentId } = data as Record<string, unknown>;
+  if (parentId !== undefined && (typeof parentId !== 'string' || parentId.trim() === '')) {
+    return { valid: false, error: 'parentId must be a non-empty string if provided' };
   }
 
   return { valid: true };

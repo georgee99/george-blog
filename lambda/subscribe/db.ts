@@ -23,7 +23,7 @@ function getTableName(): string {
 
 export interface Subscriber {
   email: string;
-  status: 'pending' | 'confirmed';
+  status: 'pending' | 'confirmed' | 'unsubscribed' | 'bounced' | 'complained';
   confirmationToken: string;
   createdAt: string;
   confirmedAt: string | null;
@@ -63,6 +63,21 @@ export async function confirmSubscriber(
         ':confirmed': 'confirmed',
         ':confirmedAt': confirmedAt,
       },
+    }),
+  );
+}
+
+export async function setSubscriberStatus(
+  email: string,
+  status: 'unsubscribed' | 'bounced' | 'complained',
+): Promise<void> {
+  await getDocClient().send(
+    new UpdateCommand({
+      TableName: getTableName(),
+      Key: { email },
+      UpdateExpression: 'SET #s = :status',
+      ExpressionAttributeNames: { '#s': 'status' },
+      ExpressionAttributeValues: { ':status': status },
     }),
   );
 }
