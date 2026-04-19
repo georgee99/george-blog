@@ -10,7 +10,7 @@ type Props = {
   posts: PostMeta[];
 };
 
-const POSTS_PER_PAGE = 10;
+const POSTS_PER_PAGE = 15;
 
 export default function BlogList({ posts }: Props) {
   const [query, setQuery] = React.useState("");
