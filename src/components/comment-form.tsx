@@ -41,7 +41,7 @@ export default function CommentForm({ postSlug, parentId, onSuccess, onCancel, c
         throw new Error(data?.error ?? `Request failed (${res.status})`)
       }
 
-      setStatus('success')
+      setStatus('idle')
       setAuthorName('')
       setBody('')
       onSuccess?.()
@@ -129,13 +129,7 @@ export default function CommentForm({ postSlug, parentId, onSuccess, onCancel, c
         Leave a comment
       </h2>
 
-      {status === 'success' ? (
-        <p className="text-sm text-green-600 dark:text-green-400">
-          Thanks for your comment!
-        </p>
-      ) : (
-        form
-      )}
+      {form}
     </section>
   )
 }
