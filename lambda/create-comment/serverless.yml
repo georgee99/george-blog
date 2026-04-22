@@ -19,6 +19,7 @@ provider:
           Action:
             - dynamodb:PutItem
             - dynamodb:Query
+            - dynamodb:UpdateItem
           Resource: !Sub "arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${env:DYNAMODB_TABLE_NAME}"
 
 plugins:
@@ -55,5 +56,15 @@ functions:
     events:
       - http:
           path: /comments
+          method: post
+          cors: true
+
+  addReaction:
+    handler: add-reaction.handler
+    description: Add an emoji reaction to a comment
+    timeout: 10
+    events:
+      - http:
+          path: /reactions
           method: post
           cors: true

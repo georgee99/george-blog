@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import CommentForm from './comment-form'
+import ReactionBar from './reaction-bar'
 
 export interface Comment {
   commentId: string
@@ -9,6 +10,7 @@ export interface Comment {
   content: string
   createdAt: string
   parentId?: string
+  reactions?: Record<string, number>
 }
 
 interface CommentThread {
@@ -82,6 +84,8 @@ export default function CommentList({ postSlug, comments, loading, onRefetch }: 
               {comment.content}
             </p>
 
+            <ReactionBar postSlug={postSlug} commentId={comment.commentId} reactions={comment.reactions} />
+
             {/* Reply button */}
             {replyingTo !== comment.commentId && (
               <button
@@ -124,6 +128,7 @@ export default function CommentList({ postSlug, comments, loading, onRefetch }: 
                     <p className="text-sm leading-relaxed text-neutral-600 dark:text-neutral-400">
                       {reply.content}
                     </p>
+                    <ReactionBar postSlug={postSlug} commentId={reply.commentId} reactions={reply.reactions} />
                   </li>
                 ))}
               </ul>

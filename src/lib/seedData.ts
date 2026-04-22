@@ -5,12 +5,14 @@ export const seedCommentData = {
       author: 'John Doe',
       content: 'Great post! Really enjoyed it.',
       createdAt: new Date().toISOString(),
+      reactions: { '👍': 4, '❤️': 2 },
     },
     {
       commentId: '2026-01-01T00:00:01.000Z#seed-2',
       author: 'Jane Smith',
       content: 'Thanks for sharing your thoughts.',
       createdAt: new Date().toISOString(),
+      reactions: { '👍': 1 },
     },
     {
       commentId: '2026-01-01T00:00:02.000Z#seed-3',
@@ -18,6 +20,7 @@ export const seedCommentData = {
       content: 'Glad you liked it!',
       createdAt: new Date().toISOString(),
       parentId: '2026-01-01T00:00:00.000Z#seed-1',
+      reactions: {},
     },
     {
       commentId: '2026-01-01T00:00:03.000Z#seed-4',
@@ -25,6 +28,7 @@ export const seedCommentData = {
       content: 'Man this post is amazing! Thanks for writing it.',
       createdAt: new Date().toISOString(),
       parentId: '2026-01-01T00:00:00.000Z#seed-1',
+      reactions: { '❤️': 3, '😢': 1 },
     },
     {
       commentId: '2026-01-01T00:00:04.000Z#seed-5',
@@ -32,6 +36,7 @@ export const seedCommentData = {
       content: 'I am so impressed, I no longer feel the need to take over the city',
       createdAt: new Date().toISOString(),
       parentId: '2026-01-01T00:00:00.000Z#seed-1',
+      reactions: { '😡': 2 },
     }
   ],
 }
