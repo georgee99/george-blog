@@ -25,6 +25,9 @@ export interface DynamoComment {
   createdAt: string;
   parentId?: string;
   reactions?: Record<string, number>;
+  ipHash?: string;
+  userAgent?: string;
+  clientId?: string;
 }
 
 export async function getComments(postSlug: string): Promise<DynamoComment[]> {
@@ -44,6 +47,9 @@ export async function insertComment(
   author: string,
   content: string,
   parentId?: string,
+  ipHash?: string,
+  userAgent?: string,
+  clientId?: string,
 ): Promise<DynamoComment> {
   const createdAt = new Date().toISOString();
   const commentId = `${createdAt}#${randomUUID()}`;
@@ -56,6 +62,9 @@ export async function insertComment(
     createdAt,
     reactions: {},
     ...(parentId ? { parentId } : {}),
+    ...(ipHash ? { ipHash } : {}),
+    ...(userAgent ? { userAgent } : {}),
+    ...(clientId ? { clientId } : {}),
   };
 
   await getDocClient().send(
@@ -65,7 +74,15 @@ export async function insertComment(
     }),
   );
 
-  return item;
+  return {
+    postSlug: item.postSlug,
+    commentId: item.commentId,
+    author: item.author,
+    content: item.content,
+    createdAt: item.createdAt,
+    reactions: item.reactions,
+    ...(item.parentId ? { parentId: item.parentId } : {}),
+  };
 }
 
 export async function addReaction(
