@@ -90,7 +90,7 @@ export default function CommentList({ postSlug, comments, loading, onRefetch }: 
             {replyingTo !== comment.commentId && (
               <button
                 onClick={() => setReplyingTo(comment.commentId)}
-                className="mt-2 text-xs text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300"
+                className="mt-2 text-sm text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300"
               >
                 Reply
               </button>
