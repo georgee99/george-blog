@@ -1,0 +1,61 @@
+---
+title: Do companies actually use SOLID Principles?
+date: 2026-04-22
+description: Are SOLID Principles actually used in the workplace, or just interview talk
+published: true
+tags: ["tech", "coding"]
+---
+
+It takes a while to grasp the concept of SOLID Principles. During the learning phase, you begin to wonder
+if companies tend to actually follow these religiously. The short answer is not really. There's always 
+going to be exceptions, trade-offs, and shortcuts in production codebases.  
+
+## Expectation vs Reality
+During university, there is a big emphasis on these principles. The university codebases adhere to these
+very strictly, no matter how small they are. When it comes to smaller projects, this is definitely different to the workplace. 
+Last week I had to deploy a small AWS Lambda with an API Gateway, as a middleman for a larger pipeline. It took around an hour, and
+there was no emphasis on SOLID at all. We quickly got it up and running. There was probably around 150 lines in one file. 
+It's terrible in terms of code quality, but it works. If a newcomer read the code, they'd probably be shocked.
+
+## Why companies don't strictly follow SOLID
+There are numerous companies out there who place a large emphasis on deadlines. From their perspective, deadlines > perfect 
+architecture. This goes for both smaller and larger architectures. Legacy architectures tend to not follow these principles 
+more often than newer. There are numerous code constraints, including deprecations, poorly written code and delivery pressures. 
+Implementing SOLID principles in these codebases can slow down team progress. Overengineering can slow down delivery, and in 
+an agile environment, this is detrimental. 
+
+## Where SOLID can actually show up
+SOLID can show up in specific areas of codebases, particularly in new features. Team leads often bring up the idea of:
+<div className="[&_li::marker]:text-neutral-900 dark:[&_li::marker]:text-neutral-100">
+- separating responsibilities properly
+- avoid tight coupling
+- structure code for the future
+</div>
+
+It won't be a perfect design, but most devs will try to at least avoid one class doing everything. Once the code is in production though,
+this tends to fade.
+
+They'll also show up in refactored areas. Sometimes the codebase becomes unbearable, and leads will allocate time specifically for
+refactoring. It helps with testing, future-proofing, and less side effects.
+
+## How SOLID is actually used
+SOLID shouldn't be followed blindly. In a codebase where every minor feature has its own interface, there tends to be too much clutter and
+over-abstraction. Speaking from experience, it's much more difficult to introduce new devs to the environment, and code can become 
+harder to read.
+
+Instead of just blindly following SOLID, it should be used as a guideline rather than a rulebook. The environment should be optimised for 
+readability first, then can be refactored and enhanced when needed, as opposed to upfront. There needs to be a good balance between 
+simplicity and flexibility.
+
+## My take
+SOLID is incredibly useful, but only when you understand why you're using it. A common theme in workplaces is that junior devs tend to overuse
+it (canon event), and most senior devs simplify it. That balance is what actually matters.
+
+<div className="not-prose">
+  <img
+    src="/meow/S10.png"
+    alt="My cat"
+    className="mx-auto block w-72"
+    style={{ height: "auto" }}
+  />
+</div>
