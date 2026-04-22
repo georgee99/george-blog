@@ -2,6 +2,17 @@
 
 import { useId, useState } from 'react'
 
+function getOrCreateClientId(): string {
+  const key = 'blog_client_id'
+  const existing = localStorage.getItem(key)
+  if (existing) return existing
+  const id = typeof crypto !== 'undefined' && crypto.randomUUID
+    ? crypto.randomUUID()
+    : Math.random().toString(36).slice(2)
+  localStorage.setItem(key, id)
+  return id
+}
+
 interface CommentFormProps {
   postSlug: string
   parentId?: string
@@ -32,6 +43,7 @@ export default function CommentForm({ postSlug, parentId, onSuccess, onCancel, c
           postSlug,
           authorName: authorName.trim(),
           body: body.trim(),
+          clientId: getOrCreateClientId(),
           ...(parentId ? { parentId } : {}),
         }),
       })
