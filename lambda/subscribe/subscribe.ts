@@ -1,7 +1,7 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { randomUUID } from 'crypto';
 import { getSubscriber, putSubscriber, Subscriber } from './db';
-import { sendConfirmationEmail } from './ses';
+import { sendConfirmationEmail } from './email';
 
 function json(statusCode: number, body: object): APIGatewayProxyResult {
   return {

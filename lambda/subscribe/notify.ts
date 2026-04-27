@@ -1,10 +1,10 @@
 ﻿import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, ScanCommand } from '@aws-sdk/lib-dynamodb';
-import { SESClient, SendRawEmailCommand } from '@aws-sdk/client-ses';
+import { Resend } from 'resend';
 import { Subscriber } from './db';
 
 const dynamo = DynamoDBDocumentClient.from(new DynamoDBClient({}));
-const ses = new SESClient({});
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 function getTableName(): string {
   const name = process.env.SUBSCRIBERS_TABLE_NAME;
@@ -12,9 +12,9 @@ function getTableName(): string {
   return name;
 }
 
-function getSenderEmail(): string {
-  const email = process.env.SES_SENDER_EMAIL;
-  if (!email) throw new Error('SES_SENDER_EMAIL environment variable is not set');
+function getFromEmail(): string {
+  const email = process.env.RESEND_FROM_EMAIL;
+  if (!email) throw new Error('RESEND_FROM_EMAIL environment variable is not set');
   return email;
 }
 
@@ -73,38 +73,6 @@ function injectUnsubscribeFooter(html: string, unsubscribeUrl: string): string {
   );
 }
 
-function buildRawEmail(opts: {
-  from: string;
-  to: string;
-  subject: string;
-  plain: string;
-  html?: string;
-  unsubscribeUrl: string;
-}): string {
-  const boundary = `boundary_${Date.now()}`;
-  const lines: string[] = [
-    `From: ${opts.from}`,
-    `To: ${opts.to}`,
-    `Subject: ${opts.subject}`,
-    `MIME-Version: 1.0`,
-    `List-Unsubscribe: <${opts.unsubscribeUrl}>`,
-    `List-Unsubscribe-Post: List-Unsubscribe=One-Click`,
-    `Content-Type: multipart/alternative; boundary="${boundary}"`,
-    ``,
-    `--${boundary}`,
-    `Content-Type: text/plain; charset=UTF-8`,
-    ``,
-    opts.plain,
-  ];
-
-  if (opts.html) {
-    lines.push(`--${boundary}`, `Content-Type: text/html; charset=UTF-8`, ``, opts.html);
-  }
-
-  lines.push(`--${boundary}--`);
-  return lines.join('\r\n');
-}
-
 export const handler = async (
   event: NotifyPayload,
 ): Promise<{ sent: number; emails: string[] }> => {
@@ -115,7 +83,7 @@ export const handler = async (
   }
 
   const siteBaseUrl = getSiteBaseUrl();
-  const from = getSenderEmail();
+  const from = getFromEmail();
   const subscribers = await getConfirmedSubscribers();
 
   if (subscribers.length === 0) {
@@ -129,23 +97,20 @@ export const handler = async (
 
   for (const sub of subscribers) {
     const unsubscribeUrl = buildUnsubscribeUrl(siteBaseUrl, sub.email, sub.confirmationToken);
-    const plain = `${body}\n\nUnsubscribe: ${unsubscribeUrl}`;
+    const text = `${body}\n\nUnsubscribe: ${unsubscribeUrl}`;
     const htmlWithFooter = html ? injectUnsubscribeFooter(html, unsubscribeUrl) : undefined;
 
-    const rawEmail = buildRawEmail({
+    await resend.emails.send({
       from,
       to: sub.email,
       subject,
-      plain,
-      html: htmlWithFooter,
-      unsubscribeUrl,
+      text,
+      ...(htmlWithFooter ? { html: htmlWithFooter } : {}),
+      headers: {
+        'List-Unsubscribe': `<${unsubscribeUrl}>`,
+        'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+      },
     });
-
-    await ses.send(
-      new SendRawEmailCommand({
-        RawMessage: { Data: Buffer.from(rawEmail) },
-      }),
-    );
     sent.push(sub.email);
     console.log(`Sent to ${sub.email}`);
   }
