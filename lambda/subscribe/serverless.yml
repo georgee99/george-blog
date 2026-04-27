@@ -7,7 +7,9 @@ provider:
   stage: ${opt:stage, 'prod'}
   environment:
     SUBSCRIBERS_TABLE_NAME: ${env:SUBSCRIBERS_TABLE_NAME}
-    SES_SENDER_EMAIL: ${env:SES_SENDER_EMAIL}
+    RESEND_API_KEY: ${env:RESEND_API_KEY}
+    RESEND_FROM_EMAIL: ${env:RESEND_FROM_EMAIL}
+    RESEND_WEBHOOK_SECRET: ${env:RESEND_WEBHOOK_SECRET}
     SITE_BASE_URL: ${env:SITE_BASE_URL}
   iam:
     role:
@@ -19,11 +21,6 @@ provider:
             - dynamodb:UpdateItem
             - dynamodb:Scan
           Resource: !Sub "arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${env:SUBSCRIBERS_TABLE_NAME}"
-        - Effect: Allow
-          Action:
-            - ses:SendEmail
-            - ses:SendRawEmail
-          Resource: '*'
 
 plugins:
   - serverless-esbuild
@@ -41,25 +38,10 @@ custom:
 package:
   individually: true
 
-resources:
-  Resources:
-    SESBounceComplaintTopic:
-      Type: AWS::SNS::Topic
-      Properties:
-        TopicName: george-blog-ses-bounce-complaint-${opt:stage, 'prod'}
-
-  Outputs:
-    SESBounceComplaintTopicArn:
-      Value: !Ref SESBounceComplaintTopic
-      Description: >
-        ARN of the SNS topic for SES bounce/complaint notifications.
-        Go to SES Console > Verified identities > your domain > Notifications
-        and set both Bounces and Complaints to this topic ARN.
-
 functions:
   subscribe:
     handler: subscribe.handler
-    description: Subscribe an email address, save to DynamoDB, send confirmation email via SES
+    description: Subscribe an email address, save to DynamoDB, send confirmation email via Resend — invoked via POST /subscribe
     timeout: 10
     events:
       - http:
@@ -89,12 +71,13 @@ functions:
 
   bounceHandler:
     handler: bounce-handler.handler
-    description: Handles SES bounce and complaint SNS notifications — marks subscribers as bounced/complained in DynamoDB
-    timeout: 30
+    description: Handles Resend webhook events for bounces and complaints — marks subscribers as bounced/complained in DynamoDB
+    timeout: 10
     events:
-      - sns:
-          arn: !Ref SESBounceComplaintTopic
-          topicName: george-blog-ses-bounce-complaint-${opt:stage, 'prod'}
+      - http:
+          path: /webhook/resend
+          method: post
+          cors: false
 
   notifySubscribers:
     handler: notify.handler

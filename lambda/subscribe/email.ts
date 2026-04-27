@@ -1,10 +1,10 @@
-import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses';
+import { Resend } from 'resend';
 
-const ses = new SESClient({});
+const resend = new Resend(process.env.RESEND_API_KEY);
 
-function getSenderEmail(): string {
-  const email = process.env.SES_SENDER_EMAIL;
-  if (!email) throw new Error('SES_SENDER_EMAIL environment variable is not set');
+function getFromEmail(): string {
+  const email = process.env.RESEND_FROM_EMAIL;
+  if (!email) throw new Error('RESEND_FROM_EMAIL environment variable is not set');
   return email;
 }
 
@@ -21,7 +21,7 @@ export async function sendConfirmationEmail(
   const confirmUrl =
     `${getSiteBaseUrl()}/api/subscribe/confirm` +
     `?email=${encodeURIComponent(toEmail)}&token=${encodeURIComponent(token)}`;
-  const plain =
+  const text =
     `Hi,\n\nClick the link below to confirm your subscription to George's Blog:\n\n` +
     `${confirmUrl}\n\nIf you did not request this, you can safely ignore this email.\n`;
 
@@ -63,17 +63,11 @@ export async function sendConfirmationEmail(
   </body>
 </html>`;
 
-  await ses.send(
-    new SendEmailCommand({
-      Source: getSenderEmail(),
-      Destination: { ToAddresses: [toEmail] },
-      Message: {
-        Subject: { Data: 'Confirm your subscription' },
-        Body: {
-          Text: { Data: plain },
-          Html: { Data: html },
-        },
-      },
-    }),
-  );
+  await resend.emails.send({
+    from: getFromEmail(),
+    to: toEmail,
+    subject: 'Confirm your subscription',
+    html,
+    text,
+  });
 }
