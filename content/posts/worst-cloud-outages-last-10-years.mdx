@@ -1,0 +1,109 @@
+---
+title: Ranking the Worst Cloud Outages in the Last 10 Years
+date: 2026-04-30
+description: Ranking best Cloud and Infrastructure fails I've seen
+published: true
+tags: ["tech", "coding", "ranking"]
+---
+
+Major cloud and infrastructure providers aren't invincible. There's usually a lot of issues and drawbacks
+which people don't see. In this list I'll talk about and rank previous failures and outages that 
+happened on a catastrophic level.
+
+### 1. Dyn DDoS Attack October 2016
+This wasn't an exact fault of Dyn, but preventative measures would have helped. Attackers were able
+to leverage a malware known as Mirai to infect thousands of IoT devices. These devices once infected,
+were controlled remotely to flood Dyn with DNS queries. Almost immediately, Dyn's servers became
+overwhelmed, and caused failures with DNS resolution. Browsers returned errors or timed out.
+
+Some of the affected services included
+- Netflix
+- Twitter
+- GitHub 
+- PayPal
+
+This wasn't fixed immediately, and throughout the day there were multiple waves. It caused hours
+of disruption. The preventative measures after this attack included much stronger DDoS mitigation
+across DNS providers. IoT risks were brought to light also, as they previously had a reputation for 
+being safe.
+
+
+### 2. AWS S3 Outage February 2017
+The report written by AWS confirmed that this occurred due to a single engineer. The S3 billing system
+was being looked into via powershell. The engineer attempted to remove a few servers, but ended up
+removing many more than intended.
+
+The S3 service is built on multiple subsystems. When removing servers, a lot of capacity was removed.
+Subsystems involving indexing and storage had less capacity, and related operations began failing. 
+The result was widespread HTTP 500 errors.
+
+A restart of the servers was then done, however, there was a long restart time. State had to be 
+rebuilt across numerous nodes. 
+
+During this time, there were significant failures. S3 is used for numerous purposes. Primarily storage
+of static assets, images, and API responses. As a result, apps completely broke.
+
+Those in the us-east-1 region were directly affected. Companies which only used us-east-1 were also 
+affected by this. Some popular services which broke included Slack, Trello, Quora, and GitHub. This 
+lasted for 4 hours. 
+
+### 3. Cloudflare Global Outage June 2022
+Cloudflare had a simple misconfiguration and took down many services associated with it.
+The misconfiguration wasn't even a code deploy, it was a change in one of the regex.
+The regex included a bug which triggered significant backtracking. The CPU became overloaded,
+and due to the config being deployed worldwide, the entire network became incredibly slow at once.
+
+The servers didn't crash immediately, they just became slow and unusable. From a user perspective, it
+appeared as if the requests were timing out and websites were down.
+
+Because Cloudflare sits in front of many apps, there were lots of impacted services. The major ones
+include:
+- Discord
+- Shopify
+- GitLab
+- Medium
+
+This outage lasted for around 30 minutes, but did some damage to Cloudflare's reputation. After this
+incident, Cloudflare added stronger safeguards to prevent CPU spikes, and slowed down their rollouts.
+
+### 4. Microsoft Azure DNS Outage September 2021
+Sort of similar to Dyn, a DNS failure in Azure caused many services to become unreachable. As a 
+result, users couldn't connect to services which used Azure for hosting. In the report, Microsoft
+cited this was triggered by a config issue. 
+
+Popular Azure services such as Teams, Outlook, and Office 365 couldn't be located or resolved by 
+Azure DNS. APIs and authentication were also failing as a result. These services were disrupted for 
+over 3 hours.
+
+After this issue, Microsoft placed a big emphasis on DNS resilience, and isolating services to 
+prevent any cascading effects.
+
+### 5. Facebook (Meta) Outage October 2021
+People who are chronically online might remember this one. Facebook accidentally disconnected 
+themselves from the internet by a simple network change. The change removed Facebook's routes
+from the internet and took down Facebook, Instagram, and WhatsApp
+
+Facebook connects to the internet with a protocol called Border Gateway Protocol (BGP). BGP provides
+routes on how to reach Facebook servers. The update accidentally removed those routes. Service 
+providers and routers couldn't connect to Facebook, and just dropped traffic entirely almost immediately.
+The DNS servers became unreachable, and the cached connections eventually died. 
+
+The incident report also stated that some of the internal systems broke too. One of the funnier
+parts is that the badge systems relied on internal tooling and the network, which meant that the 
+employees couldn't access the building to fix this.
+
+To resolve this, employees had to physically access the data centres and restore routing configs manually.
+It took around 6 hours to fully recover. Billions of users were affected. From a business POV,
+there was a big revenue loss and competitors like Twitter profited.
+
+Like the others, Facebook implemented changes to validation, especially sensitive config changes. They 
+also reduced total dependency on internal-only systems.
+
+<div className="not-prose">
+  <img
+    src="/meow/M12.png"
+    alt="meow"
+    className="mx-auto block w-70"
+    style={{ height: "auto" }}
+  />
+</div>
