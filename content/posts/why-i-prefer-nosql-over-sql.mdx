@@ -1,0 +1,97 @@
+---
+title: Why I Prefer NoSQL over SQL
+date: 2026-04-29
+description: Overview of which database I prefer working with
+published: true
+tags: ["tech", "coding"]
+---
+
+In my software engineering career I've used both SQL and NoSQL databases across different types of systems. From structured
+reporting environments to more flexible event-driven applications.
+
+Even though I was taught with SQL, I've grown to prefer using NoSQL. Especially when building newer and more modern applications.
+
+## About SQL
+Just to be clear, I don't have anything against SQL databases. In fact, in some cases it makes more sense. It can be used when 
+you need complex joins, clear reporting, and strictness in data. Stuff like joins, constraints, and transactions make it much 
+easier to keep your data clean and intact. A lot of older companies, particularly in the financial industries use SQL 
+databases for this reason. 
+
+One downside is that the rigid structure of SQL databases can sometimes slow development down a little bit. If you need 
+to change your data slightly, you've got to deal with migrations, schema updates, and annoying ORM quirks. This can be annoying
+especially if you're in the planning phase of a new application. Or if you work in a fast paced environment.
+
+## Why NoSQL makes more sense
+When I first made the switch to NoSQL, it felt like a big upgrade and made more sense to me. There were a lot of things I liked
+about it. When I was building the comments section of this blog site, I switched to DynamoDB. It meant I could store everything
+under a postId and fetch it in one single query. Below are some of the things which I like about it.
+
+- **Flexible schema**
+    - Adjusting your schema in a NoSQL table is much easier. You can forget about migrations and potential breaks, especially
+    with issues related to null values.
+    - If your software is in early stage development, it will be much easier
+- **Similar to existing work**
+    - When using NoSQL, you'll be working a lot with JSON objects. The familiarity of the data structure makes it much easier
+    to work with and visualise. It feels much more natural.
+- **Less overhead**
+    - For simple use cases, designing multiple tables and their relationships can be wasteful
+    - With NoSQL, it is much easier to get something up and running quickly.
+    - It's great for small data such as logs and comments.
+- **Cheaper**
+    - With NoSQL, you pay for usage rather than always-on infrastructure.
+    - For personal projects, definitely opt for NoSQL.
+
+## Where NoSQL falls short
+- **No Joins**
+    - If you have data which is related, it can be harder to work with. There's a bit more manual work in the long run.
+- **Can be messy**
+    - If the data isn't structured properly, it can become messy. When some developers start using NoSQL, they begin to 
+    become lazy with their schema. Without discipline, this can be a disaster.
+- **Data duplication**
+    - In NoSQL, it's possible for the same data to be stored in multiple places.
+    - This can make changes and updates a bit more tricky than an SQL query
+- **Reporting**
+    - Complex queries and reporting are much harder compared to SQL
+    - It isn't ideal when you need to analyse data
+
+## Mindset shift
+Shifting from SQL to NoSQL requires a change in the way you think about data. When designing a system with SQL database, it's 
+important to think about model relationships, and how different objects link to each other. Concepts like tables, foreign keys,
+and normalisation are important to maintain data integrity. 
+
+With NoSQL, the mindset shifts to how data is accessed. When 
+creating tables here, you must consider how data is queried rather than stored. It's important to design for reads and not 
+relationships instead.
+
+When moving from SQL to NoSQL, you must also be prepared for a bit more complexity within the application. While the DB looks to
+be simpler on the surface, in reality it has moved to the codebase. Your application must be refactored to handle the logic that
+a SQL database would normally handle. 
+
+Another mindset shift you would have to adjust to is thinking of the data in aggregates as opposed to tables. With a NoSQL
+system, you'd be grouping related data together, and reducing the need for joins. When designing this blog site, I chose to
+group comments and posts together. Grouping them together made me not require a join.
+
+## The real question
+Although some developers are hard-set on NoSQL (me), the real question isn't which database is better, it's "What 
+database makes more sense for this problem?". When designing a software, things like scalability, reporting, flexibility
+are all major factors to consider. SQL makes sense when you need structure and reporting. NoSQL makes sense when access 
+patterns are simple and predictable
+
+## My take
+NoSQL wins
+
+Just kidding. For my own projects (work + personal), I tend to use NoSQL. My work environment is quite fast paced, and new 
+requirements are expected to be met within a week. Because of its flexibility, NoSQL makes sense here. SQL still makes sense
+in a lot of applications, particularly those with structure and heavy reporting requirements.
+
+My approach to choosing is to start simple and avoid over-engineering. High and unnecessary complexity can stall the progress
+of building a software. As an engineer, it's important to know how both work, and when to use each.
+
+<div className="not-prose">
+  <img
+    src="/meow/M11.png"
+    alt="meow"
+    className="mx-auto block w-70"
+    style={{ height: "auto" }}
+  />
+</div>
