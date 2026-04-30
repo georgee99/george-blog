@@ -1,4 +1,4 @@
-import { seedCommentData } from '@/lib/seedData'
+import { seedCommentData, seedGuestbookData } from '@/lib/seedData'
 import { createHash } from 'crypto'
 import { NextRequest, NextResponse } from 'next/server'
 
@@ -17,8 +17,9 @@ function getIp(req: NextRequest): string {
 export async function GET(req: NextRequest) {
   const isDev = process.env.NODE_ENV === 'development'
   if (isDev) {
+    const postSlug = req.nextUrl.searchParams.get('postSlug')
     console.debug('Using seed comment data in development');
-    return NextResponse.json(seedCommentData)
+    return NextResponse.json(postSlug === 'guestbook' ? seedGuestbookData : seedCommentData)
   }
   const lambdaUrl = process.env.COMMENTS_API_URL
   if (!lambdaUrl) {
