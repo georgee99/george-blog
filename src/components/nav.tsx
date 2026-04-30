@@ -5,6 +5,7 @@ import { siteConfig } from "@/lib/config";
 const navLinks = [
   { href: "/", label: "Home" },
   { href: "/blog", label: "Blog" },
+  { href: "/guestbook", label: "Guestbook" },
 ];
 
 export function Nav() {
