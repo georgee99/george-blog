@@ -39,7 +39,7 @@ if (useDefaultHtml && !html) {
     `          <h1 style="margin:0 0 24px;font-size:22px;font-weight:700;color:#111111;line-height:1.3;">${subject}</h1>`,
     '        </td></tr>',
     '        <tr><td style="padding:0;">',
-    '          <img src="https://georgeelz.blog/meow/M7.png" alt="" width="560" style="display:block;width:100%;max-width:560px;height:220px;object-fit:cover;" />',
+    '          <img src="https://georgeelz.blog/meow/M7-560.webp" srcset="https://georgeelz.blog/meow/M7-320.webp 320w, https://georgeelz.blog/meow/M7-560.webp 560w, https://georgeelz.blog/meow/M7-1120.webp 1120w" sizes="(max-width:480px) 320px, 560px" alt="" width="560" height="220" style="display:block;width:100%;max-width:560px;height:auto;object-fit:cover;" />',
     '        </td></tr>',
     '        <tr><td style="padding:32px;color:#111111;">',
     '          <p style="margin:0 0 16px;font-size:15px;line-height:1.6;">Hello important person,</p>',
