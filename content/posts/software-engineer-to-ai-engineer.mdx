@@ -1,0 +1,126 @@
+---
+title: From a Software Engineer to an AI Engineer
+date: 2026-05-04
+description: Talking about how to become an AI Engineer with a Software Engineering backgroun
+published: true
+tags: ["chess", "ranking"]
+---
+
+Currently, I work as a full-stack software engineer, with a backend focus. My preferred tech stack is .NET Core 
+and TypeScript, and I also do a lot of work in the cloud. The amount of code I've written in the last 8 months has
+dropped a lot with using GitHub Copilot. It's caused me to have peak interest in the field of AI and where the
+developers in my industry are headed. AI Engineering is a confusing profession and so many developers don't 
+understand what they actually do. With proper research it's not that confusing. 
+In this post I'll talk about the approach I'm currently taking to transition into AI engineering as a software engineer. 
+
+---
+
+## What AI Engineering Actually Is
+AI Engineering is building applications on top of foundation models rather than training
+them from scratch. Essentially this includes:
+
+- Building applications using base models with APIs
+    - e.g. OpenAI, Anthropic
+- Designing prompts and structuring inputs/outputs
+- Building RAG pipelines to incorporate external data
+- Writing evaluation frameworks to measure performance
+- Not focused on training models from scratch
+
+Although the name doesn't sound like it, it's way closer to backend engineering than traditional 
+machine learning. The focus is on system design, data flow, and reliability.
+
+---
+
+## Why Software Engineers Are In A Good Position
+Many software engineers overthink about how they would need to transition to AI. A lot of them 
+take on courses, and even go back to univesrsity for masters and doctorates. Although there's nothing
+wrong with this, it can be unecessary. In reality, software engineers alreayd have most of the skills
+required for AI Engineering
+
+- Experience working with APIs and backend systems
+- Familiarity with databases and data flow
+- Understanding of system design, scalability, and reliability
+- Experience with cloud platforms
+
+The main gap is learning how LLMs behave, where they fail, and how to design systems around those limitations.
+
+---
+
+## Key Concepts to Learn
+
+You don't need to go deep into model training or advanced mathematics. The prime concepts include understanding tokens and context windows, which determines how much information 
+a model can process at once, and temperature, which controls how deterministic or creative the output is. 
+
+It's also important to understand why models hallucinateand how prompt structure can significantly influence output quality. 
+On the data side, concepts like embeddings and semantic search are key to allow for retrieval used within RAG pipelines.
+
+Finally, one of the most overlooked but critical areas is evaluation. AI outputs are fuzzy and things can look right but be wrong. Most people rely on intuition, 
+but in practice, building AI systems requires deliberate ways to measure and improve output quality.
+
+---
+
+## Practical Transition Plan
+One thing many AI Engineers agree on is to not spend too much time doing theory upfront, but rather to jump right into building.
+The guide below serves as a good way to transition
+
+### Week 1: Add a small AI feature to an existing project
+This can be really small. The purpose of it is to understand the foundations and to be uncomfortable
+- Examples:
+  - AI search over blog posts (RAG)
+  - AI-generated summaries
+  - Inbox organiser
+  - Comment moderation
+- Use an LLM API directly or a framework
+- Focus on shipping something, not perfection
+
+---
+
+### Weeks 2–4: Fixing problems and gaps
+The small feature you'll build will bound to have little problems and gaps when you hit them.
+You might encounter issues and possible improvements including
+
+- RAG Pipeline returning irrelevant results
+- Knowing if outputs are actually good
+- An agent going in circles
+- Getting incorrect or hallucinated outputs
+- High latency and cost of API usage
+- Improving prompt structure and consistency
+
+---
+
+### Month 2+: Building something more ambitious
+There's a large number of possibiliies to build at this stage. Ideally it should be something multi-step.
+It should be something you could demo about and write a lot about. At this point, you'd become comfortable
+with conceptualising how to add AI to existing workflows. Some examples could be adding evaluation methods, 
+improving the quality of existing RAG, or introducing a basic agent
+
+---
+
+## What I'm Currently Building
+
+I'm currently looking to get into AI Engineering. One of the first things that I'm doing is adding some 
+AI features into existing projects. One of them is this blog. The other is my job tracker app. I've been
+experimenting with RAG based search, and structured outputs from LLMs.
+
+---
+
+## Final Thoughts
+
+The key takeaway from this guide is that the most effective approach is learning by building. Spending 
+a lot of time in the theory phase isn't as beneficial as building practical skills. 
+
+Another important takeaway is positioning. You don't need to wait for permission to start working with AI, you
+can begin by writing about what you're building and contributing to your workplace by adding AI features to existing 
+systems. Lots of companies are actively looking for software engineers who can own and deliver AI features and workflows.
+
+By positioning yourself as someone with AI expertise, you might not even need to change jobs at all. With a background in production
+software engineering and a few strong AI projects, your company may begin to rely on you and invest more heavily in AI initiatives.
+
+<div className="not-prose">
+  <img
+    src="/meow/S14.png"
+    alt="my cat"
+    className="mx-auto block w-50"
+    style={{ height: "auto" }}
+  />
+</div>
