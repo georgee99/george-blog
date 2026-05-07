@@ -6,9 +6,9 @@ import OpenAI from 'openai'
 // Config
 const EMBEDDING_MODEL = 'text-embedding-3-small'
 const CHAT_MODEL = 'gpt-4o-mini'
-const TOP_K = 4
-const SIMILARITY_THRESHOLD = 0.25
-const CONTEXT_TOKEN_CAP = 1500
+const TOP_K = 5
+const SIMILARITY_THRESHOLD = 0.30
+const CONTEXT_TOKEN_CAP = 2500
 const RESPONSE_MAX_TOKENS = 250
 const TEMPERATURE = 0.3
 const CHARS_PER_TOKEN = 4
@@ -96,16 +96,20 @@ function selectChunks(queryEmbedding: number[], chunks: Chunk[]): Chunk[] {
     )
   }
 
-  const filtered = scored
-    .filter(r => r.score >= SIMILARITY_THRESHOLD)
-    .slice(0, TOP_K)
+  const seenSlugs = new Set<string>()
+  const deduplicated = scored.filter(r => {
+    if (r.score < SIMILARITY_THRESHOLD) return false
+    if (seenSlugs.has(r.chunk.slug)) return false
+    seenSlugs.add(r.chunk.slug)
+    return true
+  }).slice(0, TOP_K)
 
   // Token-budget selection
   const selected: Chunk[] = []
   let used = 0
   const systemTokens = estimateTokens(buildSystemPrompt())
 
-  for (const { chunk } of filtered) {
+  for (const { chunk } of deduplicated) {
     const chunkTokens = chunk.tokenEstimate ?? estimateTokens(chunk.text)
     // Always include at least 1 chunk even if it exceeds the cap
     if (selected.length > 0 && used + chunkTokens + systemTokens > CONTEXT_TOKEN_CAP) break
@@ -135,15 +139,15 @@ Rules:
   - short paragraphs
   - occasional sentence fragments
 - Cite sources inline using:
-  (from "<slug>")
+  (from "https://georgeelz.blog/blog/<slug>")
 - At the end of a real answer, include:
   Sources:
-  - <slug>`
+  - https://georgeelz.blog/blog/<slug>`
 }
 
 function buildUserPrompt(question: string, chunks: Chunk[]): string {
   const contextBlock = chunks
-    .map(c => `--- SOURCE: ${c.slug} ---\n${c.text}`)
+    .map(c => `--- SOURCE: https://georgeelz.blog/blog/${c.slug} ---\n${c.text}`)
     .join('\n\n')
 
   return `CONTEXT:\n${contextBlock}\n\nUSER:\n${question}`
