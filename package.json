@@ -12,13 +12,15 @@
     "generate-email-default": "tsx scripts/generate-email/generate-email.ts --slug your-post-slug --author \"George\"",
     "generate-email-html": "tsx scripts/generate-email/generate-email.ts --use-default-html",
     "generate-email-html-default": "tsx scripts/generate-email/generate-email.ts --use-default-html --slug your-post-slug --author \"George\"",
-    "optimize-images": "tsx scripts/optimize-images/optimize-images.ts"
+    "optimize-images": "tsx scripts/optimize-images/optimize-images.ts",
+    "build-embeddings": "tsx scripts/build-embeddings/build-embeddings.ts"
   },
   "dependencies": {
     "gray-matter": "^4.0.3",
     "next": "16.2.1",
     "next-mdx-remote": "^6.0.0",
     "next-themes": "^0.4.6",
+    "openai": "^4.104.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "remark-gfm": "^4.0.1"

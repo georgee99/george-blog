@@ -70,7 +70,6 @@ try {
   console.log(`\nSaved test JSON to: ${outPath}`);
   console.log('Paste the JSON into the AWS Lambda Test event body.');
 } catch (err) {
-  // eslint-disable-next-line no-console
   console.error('Failed to write file:', err);
   process.exit(1);
 }

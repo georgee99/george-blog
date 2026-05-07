@@ -6,6 +6,7 @@ const navLinks = [
   { href: "/", label: "Home" },
   { href: "/blog", label: "Blog" },
   { href: "/guestbook", label: "Guestbook" },
+  { href: "/ask", label: "Ask" },
 ];
 
 export function Nav() {
