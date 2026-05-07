@@ -5,13 +5,47 @@ import OpenAI from 'openai'
 
 // Config
 const EMBEDDING_MODEL = 'text-embedding-3-small'
-const CHAT_MODEL = 'gpt-4o-mini'       // cheap; swap to gpt-4o if quality needs improve
+const CHAT_MODEL = 'gpt-4o-mini'
 const TOP_K = 4
 const SIMILARITY_THRESHOLD = 0.25
-const CONTEXT_TOKEN_CAP = 1500         // max tokens of context fed to LLM
-const RESPONSE_MAX_TOKENS = 250        // keep answers concise
-const TEMPERATURE = 0.3                // slight flexibility for inference questions
-const CHARS_PER_TOKEN = 4              // rough estimate, no tokenizer dep needed
+const CONTEXT_TOKEN_CAP = 1500
+const RESPONSE_MAX_TOKENS = 250
+const TEMPERATURE = 0.3
+const CHARS_PER_TOKEN = 4
+const RATE_LIMIT_WINDOW_MS = 60_000
+const RATE_LIMIT_MAX = 10
+
+const rateLimitMap = new Map<string, { count: number; windowStart: number }>()
+
+function getIp(req: NextRequest): string {
+  return (
+    req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
+    req.headers.get('x-real-ip') ??
+    'unknown'
+  )
+}
+
+function isRateLimited(ip: string): boolean {
+  const now = Date.now()
+  const entry = rateLimitMap.get(ip)
+
+  if (!entry || now - entry.windowStart > RATE_LIMIT_WINDOW_MS) {
+    rateLimitMap.set(ip, { count: 1, windowStart: now })
+    return false
+  }
+
+  entry.count++
+  if (entry.count > RATE_LIMIT_MAX) return true
+  return false
+}
+
+function sanitizeQuestion(input: string): string {
+  return input
+    // Strip control characters
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
+    .replace(/\s{3,}/g, '  ')
+    .trim()
+}
 
 interface Chunk {
   id: string
@@ -117,6 +151,12 @@ function buildUserPrompt(question: string, chunks: Chunk[]): string {
 
 // Route
 export async function POST(req: NextRequest) {
+  // Rate limiting
+  const ip = getIp(req)
+  if (isRateLimited(ip)) {
+    return NextResponse.json({ error: 'Too many requests. Try again in a minute.' }, { status: 429 })
+  }
+
   const apiKey = process.env.OPENAI_API_KEY
   if (!apiKey) {
     return NextResponse.json({ error: 'AI service not configured.' }, { status: 503 })
@@ -138,6 +178,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Question is too long.' }, { status: 400 })
   }
 
+  const sanitized = sanitizeQuestion(question)
+  if (sanitized.length === 0) {
+    return NextResponse.json({ error: 'question is required.' }, { status: 400 })
+  }
+
   const store = loadStore()
   if (!store || store.chunks.length === 0) {
     return NextResponse.json(
@@ -151,7 +196,7 @@ export async function POST(req: NextRequest) {
   // Embed the question
   const embeddingRes = await client.embeddings.create({
     model: EMBEDDING_MODEL,
-    input: question.trim(),
+    input: sanitized,
   })
   const queryEmbedding = embeddingRes.data[0].embedding
 
@@ -160,7 +205,7 @@ export async function POST(req: NextRequest) {
 
   if (process.env.NODE_ENV === 'development') {
     console.log('[ask] selected chunks:', selectedChunks.map(c => `${c.id} (${c.tokenEstimate} tokens)`))
-    console.log('[ask] user prompt preview:', buildUserPrompt(question.trim(), selectedChunks).slice(0, 300))
+    console.log('[ask] user prompt preview:', buildUserPrompt(sanitized, selectedChunks).slice(0, 300))
   }
 
   if (selectedChunks.length === 0) {
@@ -180,7 +225,7 @@ export async function POST(req: NextRequest) {
     max_tokens: RESPONSE_MAX_TOKENS,
     messages: [
       { role: 'system', content: systemPrompt },
-      { role: 'user', content: buildUserPrompt(question.trim(), selectedChunks) },
+      { role: 'user', content: buildUserPrompt(sanitized, selectedChunks) },
     ],
   })
 
