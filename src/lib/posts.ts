@@ -36,7 +36,8 @@ export function getAllPosts(): PostMeta[] {
 function readPostMeta(slug: string): PostMeta {
   const filePath = path.join(POSTS_DIR, `${slug}.mdx`);
   const raw = fs.readFileSync(filePath, "utf-8");
-  const { data } = matter(raw);
+  const normalized = raw.replace(/^\s+/, "");
+  const { data } = matter(normalized);
   return {
     slug,
     title: data.title ?? slug,
@@ -51,7 +52,8 @@ export async function getPost(slug: string): Promise<Post | null> {
   const filePath = path.join(POSTS_DIR, `${slug}.mdx`);
   if (!fs.existsSync(filePath)) return null;
   const raw = fs.readFileSync(filePath, "utf-8");
-  const { data, content } = matter(raw);
+  const normalized = raw.replace(/^\s+/, "");
+  const { data, content } = matter(normalized);
   const meta: PostMeta = {
     slug,
     title: data.title ?? slug,
