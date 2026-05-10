@@ -93,26 +93,35 @@ export const handler = async (
 
   console.log(`Sending to ${subscribers.length} confirmed subscriber(s)...`);
 
+  const BATCH_SIZE = 100;
   const sent: string[] = [];
 
-  for (const sub of subscribers) {
-    const unsubscribeUrl = buildUnsubscribeUrl(siteBaseUrl, sub.email, sub.confirmationToken);
-    const text = `${body}\n\nUnsubscribe: ${unsubscribeUrl}`;
-    const htmlWithFooter = html ? injectUnsubscribeFooter(html, unsubscribeUrl) : undefined;
+  for (let i = 0; i < subscribers.length; i += BATCH_SIZE) {
+    const batch = subscribers.slice(i, i + BATCH_SIZE);
 
-    await resend.emails.send({
-      from,
-      to: sub.email,
-      subject,
-      text,
-      ...(htmlWithFooter ? { html: htmlWithFooter } : {}),
-      headers: {
-        'List-Unsubscribe': `<${unsubscribeUrl}>`,
-        'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
-      },
+    const emails = batch.map((sub) => {
+      const unsubscribeUrl = buildUnsubscribeUrl(siteBaseUrl, sub.email, sub.confirmationToken);
+      const text = `${body}\n\nUnsubscribe: ${unsubscribeUrl}`;
+      const htmlWithFooter = html ? injectUnsubscribeFooter(html, unsubscribeUrl) : undefined;
+
+      return {
+        from,
+        to: sub.email,
+        subject,
+        text,
+        ...(htmlWithFooter ? { html: htmlWithFooter } : {}),
+        headers: {
+          'List-Unsubscribe': `<${unsubscribeUrl}>`,
+          'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+        },
+      };
     });
-    sent.push(sub.email);
-    console.log(`Sent to ${sub.email}`);
+
+    await resend.batch.send(emails);
+    batch.forEach((sub) => {
+      sent.push(sub.email);
+      console.log(`Queued: ${sub.email}`);
+    });
   }
 
   return { sent: sent.length, emails: sent };
