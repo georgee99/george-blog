@@ -5,6 +5,7 @@ import { useState, useRef } from 'react'
 export default function AskPage() {
   const [question, setQuestion] = useState('')
   const [answer, setAnswer] = useState<string | null>(null)
+  const [sources, setSources] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -16,6 +17,7 @@ export default function AskPage() {
 
     setLoading(true)
     setAnswer(null)
+    setSources([])
     setError(null)
 
     try {
@@ -30,14 +32,53 @@ export default function AskPage() {
 
       if (!res.ok || data.error) {
         setError(data.error ?? 'Something went wrong.')
+        setSources([])
       } else {
-        setAnswer(data.answer ?? null)
+        const a = data.answer ?? null
+        if (a) {
+          const urls = extractUrls(a)
+          const cleaned = stripSourcesSection(a)
+          setAnswer(cleaned)
+          setSources(urls)
+        } else {
+          setAnswer(null)
+          setSources([])
+        }
       }
     } catch {
       setError('Failed to reach the server.')
+      setSources([])
     } finally {
       setLoading(false)
     }
+  }
+
+  function extractUrls(text: string): string[] {
+    const raw = text.match(/\bhttps?:\/\/[^\s)]+/g) || []
+    const seen = new Set<string>()
+    const out: string[] = []
+    for (let s of raw) {
+      s = s.replace(/[.,)]+$/g, '')
+      try {
+        const u = new URL(s)
+        const href = u.href
+        if (!seen.has(href)) {
+          seen.add(href)
+          out.push(href)
+        }
+      } catch {
+        // ignore invalid urls
+      }
+    }
+    return out
+  }
+
+  function stripSourcesSection(text: string): string {
+    // Remove any trailing "Sources" section the LLM returned
+    let idx = text.search(/\nSources[:\s]*\n/i)
+    if (idx === -1) idx = text.search(/^Sources[:\s]*\n/i)
+    if (idx === -1) return text.trim()
+    return text.slice(0, idx).trim()
   }
 
   const exampleQuestions = [
@@ -109,6 +150,22 @@ export default function AskPage() {
           <div className="space-y-3 text-sm leading-relaxed text-neutral-800 dark:text-neutral-200 whitespace-pre-wrap">
             {answer}
           </div>
+        </div>
+      )}
+
+      {/* Sources */}
+      {sources.length > 0 && (
+        <div className="space-y-2 pt-3">
+          <p className="text-xs uppercase tracking-widest text-neutral-400">Sources</p>
+          <ul className="list-disc pl-5 text-sm">
+            {sources.map(s => (
+              <li key={s}>
+                <a href={s} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                  {s}
+                </a>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 

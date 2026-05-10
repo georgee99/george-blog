@@ -1,0 +1,117 @@
+---
+title: I Added RAG Search to my Blog
+date: 2026-05-10
+description: Talking about how I added RAG to this Blog
+published: true
+tags: ["coding", "tech"]
+---
+
+My blog used to only support searching via traditional keywords and filtering via categories.
+
+It worked fine if I searched for exact words in the topic, but I thought this wasn't very efficient.
+
+I decided to add RAG search to my blog so that users could ask human questions to an AI George. 
+It's overkill, but I figured it would be fun and useful to the 5 people who read this.
+
+---
+
+## What it actually is
+
+The idea behind AI search is semantic similarity. Instead of comparing words directly, we compare 
+vector embeddings, which are numerical representations of text that captures meaning.
+
+It would basically allow searches which are more human-style to retrieve articles, as opposed to having to 
+type the exact word.
+
+The system I built is a basic form of RAG (Retrieval-Augmented Generation). I don't make enough moneh 
+to train a custom AI model which would be sufficient. So instead of doing this, RAG was the right approach. 
+A lot of modern AI assistants use RAG, so it felt right to use it in my blog.
+
+---
+
+## My Architecture
+
+My pipeline was as follows:
+
+1. Blog posts are converted into chunks
+2. Each chunk is embedded using an embeddings model
+3. Embeddings are stored in a vector database (local JSON so not really a DB but whatever)
+4. User queries are embedded at runtime
+5. Similar chunks are retrieved using cosine similarity
+6. The retrieved context is passed into an LLM
+7. The response sent back and handled by the server
+
+---
+## Problems I ran into
+### Chunking
+
+I didn't know what chunking even was before building this. I did have to do a bit of reading. I found that
+in RAG systems chunking when the documents/text are split into smaller pieces beforethe embeddings get
+generated. The chunk should be small so that they can be focused on the topic, but also not too small so that 
+they can preserve context.
+
+Initially, I stored entire blog posts as single chunks which made 'AI George' suck at returning relevant
+topics and data. At one point, asking AI George about my home office setup returned unrelated chunks about 
+coffee and productivity because the embedding represented an entire blog post instead of a focused topic.
+It took a while to find the right balance. Reading about AI being non-deterministic was
+different to experiencing it.
+
+### Retrieval & Ranking
+
+Searches which use embeddings can return similar chunks from the same post, which crowds out
+coverage from other sources. There's a few concepts which can help with these limitations. 
+Deduplication helps ensure multi-post coverage. In this blog it was on the bassis of keeping the best 
+chunk per slug. Token budgeting was also a challange. Sending too many chunks to the LLM increases cost 
+and can exceed model limits, but sending too few can reduce coverage and affect response quality.
+There's also reranking. After retrieving chunks from the vector search, a reranking step can evaluate 
+the user's query alongside each retrieved chunk together.
+
+This helps the system prioritise context that is more directly related to the user's intent, 
+rather than relying purely on embedding similarity alone. These techniques help produce answers 
+that cite multiple, diverse posts.
+
+### Limitations
+
+RAG isn't perfect and is prone to hallucinations, and retrieval quality itself needs tuning.
+One of the main things was to the adjust the similarity threshold and consider query 
+expansion for very short queries (single words) to improve matches. Although it's an edge case 
+it does need to be mentioned.
+
+---
+
+## What I Took Away 
+
+Traditional backend systems are predictable but AI systems are non-deterministic.
+Things like prompts, chunking, wording, retrieval, and context make debugging and developing more 
+difficult than a traditional backend system.
+
+Building a basic AI search taught me that retrieval quality matters more than model hype. Chunking is 
+critical, and prompt engineering alone isn't enough to make a system reliable.
+
+---
+
+## Future Improvements
+
+There are still a lot of things I want to improve. A few coworkers have found bugs in AI George which has 
+motivated me in this aspect. I want to add a hybrid keyword + semantic search, and I want better chunking 
+strategies and reranking to improve relevance. Query rewriting would help short or ambiguous queries, 
+and conversation memory plus evaluation tooling would make the feature more useful and
+reliable.
+
+---
+
+## Final Thoughts
+
+Adding AI search to my blog ended up teaching me much more than I expected. I started wanting a smarter
+search bar, but I ended up learning embeddings and retrieval systems, the importance of prompt grounding,
+how token budgeting affects design, and just how difficult AI products are to build. It's made me much
+more interested in AI engineering as a whole.
+
+<div className="not-prose">
+  <img
+    src="/meow/M16.png"
+    alt="meow"
+    className="mx-auto block w-70"
+    style={{ height: "auto" }}
+  />
+</div>
