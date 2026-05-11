@@ -1,5 +1,7 @@
 service: george-blog-subscribe
 
+useDotenv: true
+
 provider:
   name: aws
   runtime: nodejs20.x
