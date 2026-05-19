@@ -1,0 +1,101 @@
+---
+title: The hidden complexity behind one API endpoint
+date: 2026-05-19
+description: What really happens when you expose a single endpoint
+published: true
+tags: ["coding", "tech"]
+---
+
+I never really thought about what happens behind a single API endpoint. Something like GET https://api.example.com/users feels simple. 
+You create a route, and deploy your service. This might be the case for smaller companies, but at a scale there's a lot more going on 
+behind the scenes. A senior engineer from Atlassian who was just laid off spoke about their software infrastructure 
+[here](https://www.youtube.com/watch?v=55pTFVoclvE). It reminded me about how complex it can get.
+
+---
+
+### What it can look like
+
+When you ask for a service to be made available, you're really asking the platform to do a lot more than just route traffic. 
+It needs to create or update DNS, configure load balancers, set up routing rules, handle TLS certificates, add logging, and apply 
+security controls. E.g specifically things like Route53 records, NGINX or Envoy configuration, and ALB targets.
+
+---
+
+### It doesn't happen instantly
+
+One thing that stood out to me is that this doesn't usually happen synchronously. Instead, the request gets turned into a task and 
+processed in the background. E.g. Client -> API -> Queue -> Worker
+
+In the Atlassian example from the video, the engineer wasn't just deploying an app. It was provisioning large infrastructure behind the scenes:
+- creating DNS records
+- updating proxy configuration
+- provisioning load balancing
+- writing state to databases
+- updating edge routing
+
+Another thing impacting speed is that internally there could be multiple systems updating independently.
+
+- DNS propagation takes time.
+- Load balancers need to reload configuration.
+- Certificates might need validation.
+- Workers can fail and retry.
+
+---
+
+### The proxy is doing most of the work
+
+One of the biggest realisations for me is that requests don't go straight to your service. They pass through a proxy layer first.
+
+The Atlassian employee mentioned that the proxy layer he built was able to handle things like:
+
+- authentication
+- authorization
+- rate limiting
+- logging
+- routing
+- DDoS protection
+
+---
+
+### Why not just let every service handle this?
+
+At first, it seems easier to let each service handle its own auth, logging, and rate limiting. But at scale, that becomes messy.
+
+Every team ends up implementing things differently, introducing bugs, and slowing down development. So instead, all of that logic gets 
+moved into a shared layer where it can be solved once and reused everywhere.
+
+---
+
+### The real flow
+
+The idea that it's just a Client -> API flow is wrong.
+
+It's actually closer to:
+
+Client -> Load balancer -> Proxy -> Security / Logging / Filters -> Routing -> Your service
+
+---
+
+### My take
+
+The main thing I got from the former Atlassian engineer's video is how much complexity is hidden behind simple interfaces.
+
+The goal isn't really to remove complexity, but to move it somewhere else.
+
+In the software he built, developers could request things like public routing or load balancing through a simple API, while the 
+platform handled the difficult parts behind the scenes. Workers would provision infrastructure, generate proxy configuration from templates, 
+update routing, and coordinate multiple distributed systems together.
+
+It looked simple, even from a dev's perspective, but underneath it was queues, proxies, infrastructure templates, dynamic configuration, 
+and centralized platform logic.
+
+The next time something sounds like "just one endpoint", it probably isn't. For junior devs, there's a good chance you discover this the hard way.
+
+<div className="not-prose">
+  <img
+    src="/meow/S18.png"
+    alt="My cat"
+    className="mx-auto block w-70"
+    style={{ height: "auto" }}
+  />
+</div>
