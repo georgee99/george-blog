@@ -105,8 +105,11 @@ export default function BionicToggle() {
 
 function enableBionic(root: HTMLElement) {
   if (!root) return
-  if (!root.getAttribute('data-bionic-original')) {
+  const original = root.getAttribute('data-bionic-original')
+  if (!original) {
     root.setAttribute('data-bionic-original', root.innerHTML)
+  } else {
+    root.innerHTML = original
   }
 
   // Work on a cloned container to avoid interfering with React
@@ -145,7 +148,7 @@ function restoreOriginal(root: HTMLElement) {
   const original = root.getAttribute('data-bionic-original')
   if (original) {
     root.innerHTML = original
-    root.removeAttribute('data-bionic-original')
+    // Keep the original saved for future toggles - don't remove the attribute
   }
 }
 
