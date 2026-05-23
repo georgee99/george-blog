@@ -1,0 +1,77 @@
+[
+  {
+    "question": "What keyboard do you use?",
+    "expectedSlugs": ["wobkey-rainy-75-review"],
+    "notes": "Specific product review"
+  },
+  {
+    "question": "What watches have you reviewed?",
+    "expectedSlugs": ["hamilton-khaki-field", "swatch-clearly-gent", "first-watch"],
+    "notes": "Multi-post coverage across watch reviews"
+  },
+  {
+    "question": "Do you prefer NoSQL or SQL?",
+    "expectedSlugs": ["why-i-prefer-nosql-over-sql"],
+    "notes": "Opinion piece with clear slug signal"
+  },
+  {
+    "question": "What do you think about working at a startup vs a large company?",
+    "expectedSlugs": ["startup-vs-large-company"],
+    "notes": "Comparison post"
+  },
+  {
+    "question": "Have you written about Spiderman?",
+    "expectedSlugs": ["spiderman", "game-review-spiderman-2"],
+    "notes": "Multiple posts on the same topic"
+  },
+  {
+    "question": "What is your home office setup like?",
+    "expectedSlugs": ["home-office-setup"],
+    "notes": "Direct slug match"
+  },
+  {
+    "question": "What coffee shops do you recommend?",
+    "expectedSlugs": ["coffee-shops-tier-list"],
+    "notes": "Tier list post"
+  },
+  {
+    "question": "How do you make good coffee?",
+    "expectedSlugs": ["guide-to-coffee-ranked"],
+    "notes": "Guide post semantically close to coffee topic"
+  },
+  {
+    "question": "What was your experience transitioning to AI engineering?",
+    "expectedSlugs": ["software-engineer-to-ai-engineer"],
+    "notes": "Career post"
+  },
+  {
+    "question": "Have you written about Ghost of Tsushima?",
+    "expectedSlugs": ["game-review-ghost-of-tsushima"],
+    "notes": "Specific game review"
+  },
+  {
+    "question": "What AWS or cloud issues have you experienced?",
+    "expectedSlugs": ["aws-key-leak", "worst-cloud-outages-last-10-years"],
+    "notes": "AWS/cloud topic spans two posts"
+  },
+  {
+    "question": "What do you think about the hidden complexity behind API endpoints?",
+    "expectedSlugs": ["hidden-complexity-api-endpoint"],
+    "notes": "Technical post — longer phrasing"
+  },
+  {
+    "question": "What movies have you ranked?",
+    "expectedSlugs": ["movie-ranking", "movie-review-project-hail-mary"],
+    "notes": "Multi-post movie topic"
+  },
+  {
+    "question": "What is RAG and how did you add it to your blog?",
+    "expectedSlugs": ["adding-rag-search-to-my-blog"],
+    "notes": "Meta post about the RAG system itself"
+  },
+  {
+    "question": "What is Melbourne like?",
+    "expectedSlugs": ["why-melbourne-feels-built-for-wandering"],
+    "notes": "Travel/lifestyle post"
+  }
+]
