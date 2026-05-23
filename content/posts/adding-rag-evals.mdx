@@ -1,0 +1,100 @@
+---
+title: Adding Evals to my RAG AI Pipeline
+date: 2026-05-23
+description: How I added retrieval and evaluation tooling to my blog's RAG pipeline
+published: true
+tags: ["coding","tech"]
+---
+
+For what it is, my current RAG AI pipeline is sufficient, but not production level.
+I wanted to add end-to-end evals to my pipeline just as a way to evaluate how good or bad the 
+AI system actually was.
+
+This post explains how I added retrieval-only and end-to-end evals to this blog
+---
+
+## Phase 1: Retrieval-only
+
+Goal: Verify that for a given question the retrieval step returns the posts I care about.
+
+What it does:
+
+1. Load the file where embeddings are stored
+2. Embed each question using the embeddings model
+3. Run the exact `selectChunks()` logic it normally would
+4. Check whether the expected post slugs appear in the selected chunks
+
+Why this is valuable: it isolates the retrieval layer. If you change chunking or the similarity 
+threshold, you get immediate feedback without spending LLM tokens.
+
+The runner prints PASS / PARTIAL / FAIL for each case and terminates if overall recall falls 
+below a guardrail.
+
+---
+
+## Phase 2: End-to-end with a judge
+
+Once retrieval was stable I added a lightweight judgement step.
+
+Flow:
+
+1. For each test case, run the full API (retrieve + chat response).
+2. Send the question, answer, and context to a small judge model with a templated prompt.
+3. The judge returns structured output: relevance 1–5, grounded: yes/no, and short reasoning.
+
+This stage costs model tokens but gives you signal about faithfulness and relevance that 
+retrieval-only tests cannot.
+
+---
+
+## Test cases
+
+I created 15 cases covering some the main topics i talk about like watches, keyboard, 
+opinion pieces, game reviews, and the RAG meta-post itself.
+
+Each case looks like:
+
+```json
+{ "question": "What keyboard do you use?", "expectedSlugs": ["wobkey-rainy-75-review"] }
+```
+
+The key was to start with narrow and concrete queries. They tend to have clear expected slugs 
+and are good for debugging chunk boundaries.
+
+---
+
+## Key metrics to track
+
+- Retrieval recall: how often expected slugs appear in selected chunks
+- Partial hit rate: at least one expected slug retrieved
+- Failure list: which questions never retrieve expected slugs
+
+These metrics tell us what to fix
+- Low recall: Tweak `SIMILARITY_THRESHOLD`, `TOP_K`, or chunk size. 
+- High partial but low full hits: Increase `TOP_K` or token cap.
+
+---
+
+## CI and automation
+
+I add the retrieval eval to CI (runs on dev). It fails the build if recall drops under a 
+threshold. This prevents accidental regressions when tuning chunking or changing the 
+embedding model.
+
+---
+
+## Helpful notes
+
+- Mirror production logic exactly. If your API deduplicates by slug and applies a token cap, 
+the eval must do the same.
+- Start off with conservative thresholds. It's easy to make retrieval brittle by being too strict.
+- Refresh your test cases occasionally 
+
+<div className="not-prose">
+  <img
+    src="/meow/M18.png"
+    alt="My cat"
+    className="mx-auto block w-50"
+    style={{ height: "auto" }}
+  />
+</div>

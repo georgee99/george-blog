@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ThemeToggle } from "./theme-toggle";
+import BionicToggle from "./bionic-toggle";
 import { siteConfig } from "@/lib/config";
 
 const navLinks = [
@@ -31,7 +32,10 @@ export function Nav() {
           ))}
         </div>
       </div>
-      <ThemeToggle />
+      <div className="flex items-center gap-2">
+        <BionicToggle />
+        <ThemeToggle />
+      </div>
     </nav>
   );
 }

@@ -93,7 +93,7 @@ export default function AskPage() {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Ask george</h1>
         <p className="mt-3 leading-relaxed text-neutral-600 dark:text-neutral-400">
-            Ask me anything you want mmmmm &#128521;
+            Ask me anything you want 👽
         </p>
       </div>
 

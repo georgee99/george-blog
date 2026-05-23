@@ -2,6 +2,7 @@ import type { MDXComponents } from "mdx/types";
 import Link from "next/link";
 import type { ComponentPropsWithoutRef } from "react";
 import SpidermanToggle from "@/components/spiderman-toggle";
+import BionicToggle from "@/components/bionic-toggle";
 
 /**
  * Override default HTML elements rendered by MDX.
@@ -9,6 +10,7 @@ import SpidermanToggle from "@/components/spiderman-toggle";
  */
 export const mdxComponents: MDXComponents = {
   SpidermanToggle,
+  BionicToggle,
   // Internal links use Next.js Link; external links open in a new tab
   a: ({ href, children, ...props }: ComponentPropsWithoutRef<"a">) => {
     if (!href) return <a {...props}>{children}</a>;
