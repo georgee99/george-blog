@@ -1,0 +1,68 @@
+---
+title: The fear of toucing legacy code
+date: 2026-05-25
+description: Why it's scary to touch legacy code
+published: true
+tags: ["tech", "coding"]
+---
+
+Majority of devs have a huge fear of touching legacy code. It's not something which changes as you get 
+experience but rather a personality shift. There's strong arguments for both refactoring it and 
+just leaving it alone
+
+### Fear of breaking production
+
+One of the main reasons devs of all levels choose to leave it alone is a fear of breaking production. 
+Although I'm a firm believer production should be broken at least once in every career, the 
+repercussions are more severe at a higher seniority. This fear is greatly exacerbated through comments 
+left by previous devs. I once saw a comment on legacy code saying "DONT TOUCH NO MATTER HOW SMART YOU ARE" 
+all the way back from 2010. I wouldn't be surprised if someone attempted to be honest, but the fact is 
+that it remains unsolved.
+
+### Legacy dependencies are ticking time bombs
+
+Another thing you realise is that a lot of legacy code has third-party dependencies which don't have 
+adequate versioning, maintenance, or documentation. This can prolong the time needed to fix as usually 
+this dependency is completely removed instead. In the end, a majority of product owners won't assign 
+time to that task and rather prioritise goals of the sprint.
+
+### Refactoring legacy code can be rewarding
+
+I'll say this though, refactoring code which no one understands is satisfying. You can gain a better 
+understanding of your system and share that knowledge with your team. Nowadays, AI assisted development 
+makes refactoring old code much easier. One thing I've found is that AI has a lot of data on older 
+libraries, and when needed is very fast at scanning documentation. If you're a stickler for writing 
+documentation, AI can do that for you too.
+
+### Legacy code slows development
+
+Most of the time, one or two legacy classes are harmless. However you do run the risk of it becoming 
+an issue when adding new features. Some features on paper which are simpler become much more difficult 
+to implement, developers avoid touching certain files, and overall velocity slows down.
+
+On rarer occasions, some of these legacy code snippets are garbage under the hood. They can cause 
+performance problems and silently increase costs, which no one picks up on. We once had a piece of code 
+uploading data to an RDS which had a bunch of question marks written in comment to scare people off. 
+It worked on me for a few months until I had some time to investigate it. After some research I realised 
+this RDS did nothing. It had zero connections from outside that particular software in the last 2 years. 
+I removed it the next day which saved money and made testing way easier.
+
+
+### My take
+
+The funny thing about legacy code is that every modern codebase eventually becomes legacy too. Most 
+systems aren't ugly because developers were bad but rather because they survived years of changing 
+requirements, deadlines, and business decisions.
+
+For me personally, I love to refactor legacy code. At the very least, have a working knowledge of it. 
+Sometimes though, the correct decision is to leave it alone. Otherwise, the scariest parts of a system are 
+exactly the parts worth understanding.
+
+<div className="not-prose">
+  <img
+    src="/meow/S20.png"
+    alt="My cat"
+    className="mx-auto block w-50"
+    style={{ height: "auto" }}
+  />
+</div>
