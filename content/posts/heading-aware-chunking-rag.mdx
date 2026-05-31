@@ -1,0 +1,122 @@
+---
+title: Fixing my RAG Chunking
+date: 2026-05-31
+description: Adding heading-aware chunking to improve retrieval quality
+published: true
+tags: ["coding", "tech"]
+---
+
+My RAG chunking was working fine, but people kept finding limitations in it. It split posts into 
+chunks based on paragraph breaks, which meant a chunk about "My Architecture" would just be the 
+content without any clue about what section it came from. 
+When someone asked "What's your RAG architecture?", the system had to match purely on the body text.
+
+I fixed this by making chunks aware of their section headings. Now chunks include context like 
+`[My Architecture]` or `[Problems I ran into]` before the content. It's a small change but it 
+improved retrieval noticeably.
+
+---
+
+## The problem with paragraph chunking
+
+My original approach was simple. Take a blog post, split it on paragraph boundaries, add some overlap 
+between chunks, and call it a day. This worked fine for basic queries but failed when someone asked 
+about a specific part of a post.
+
+Example: if I have a post with sections like:
+```
+## What it actually is
+[content about RAG basics]
+
+## My Architecture  
+[content about my pipeline]
+
+## Problems I ran into
+[content about bugs]
+```
+
+The old chunking would create three separate chunks with just the content. When embedded, the chunk 
+about "My Architecture" has no mention of the word "architecture" in it, just pipeline steps. So 
+asking "What's your RAG architecture?" might not even retrieve the right chunk.
+
+---
+
+## What heading-aware chunking does
+
+Instead of chunking blindly, I now parse the MDX file to extract headings first. Each section gets 
+chunked separately, and the heading gets prepended to every chunk from that section.
+
+E.g. Old chunk:
+```
+My pipeline was as follows:
+1. Blog posts are converted into chunks
+2. Each chunk is embedded...
+```
+
+New chunk:
+```
+[My Architecture]
+
+My pipeline was as follows:
+1. Blog posts are converted into chunks
+2. Each chunk is embedded...
+```
+
+When this gets embedded, the vector now includes both the heading and the content. Queries about 
+"architecture" will match because it's literally in the chunk.
+
+---
+
+## How I implemented it
+
+The change was in my `build-embeddings.ts` script. I added two new functions. One was to split the 
+mdx contents by headings, and the other was to chunk the sections and prepend the heading. 
+
+There was an annoying bug which took up most of my time. My MDX files had Windows line 
+endings (`\r\n`) which broke the heading regex. The pattern `/^##\s+(.+)$/` would match 
+`## What it actually is\r` and include the `\r` in the captured group.
+
+---
+
+## The results
+
+After rebuilding embeddings:
+- **212 total chunks** (same as before)
+- **171 chunks (81%)** now include heading context
+- The remaining 41 are intro paragraphs before the first heading
+
+I tested it by checking a few chunks:
+```
+ID: adding-rag-evals::1
+Heading: 'Phase 1: Retrieval-only'
+Text: [Phase 1: Retrieval-only]
+
+Goal: Verify that for a given question...
+```
+
+Before this change, asking "How do you test retrieval?" would rely on matching words like 
+"retrieval", "test", and "eval". Now it also matches the heading `Phase 1: Retrieval-only` which 
+makes the match way more confident.
+
+---
+
+## Why this matters
+
+RAG quality is mostly about retrieval. The LLM can only work with what you give it. If your chunks 
+don't include enough context, the model gets irrelevant information and hallucinates.
+
+Heading-aware chunking is a small fix but it solves a real problem. Chunks now preserve their 
+topical boundaries instead of being arbitrary text segments. When someone asks about a specific 
+section, the retrieval actually works.
+
+I'm seeing better results on my evals too. Queries that used to partially hit (retrieve some 
+expected posts) are now full hits. Not perfect yet, but way better than paragraph-only chunking.
+
+<div className="not-prose">
+  <img
+    src="/meow/M21.png"
+    alt="cat debugging chunking logic"
+    className="mx-auto block w-60"
+    style={{ height: "auto" }}
+  />
+</div>

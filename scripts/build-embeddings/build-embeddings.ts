@@ -34,6 +34,7 @@ interface Chunk {
   text: string
   embedding: number[]
   tokenEstimate: number
+  heading?: string // The section heading this chunk belongs to
 }
 
 interface EmbeddingsStore {
@@ -41,6 +42,12 @@ interface EmbeddingsStore {
   builtAt: string
   hashes: Record<string, string>
   chunks: Chunk[]
+}
+
+interface Section {
+  heading: string
+  level: number
+  content: string
 }
 
 // Helpers
@@ -78,6 +85,85 @@ function chunkText(text: string): string[] {
 
   if (current.trim()) chunks.push(current.trim())
   return chunks
+}
+
+/**
+ * Parse MDX content into sections based on heading hierarchy.
+ * Each section includes its heading and all content until the next heading of equal or higher level.
+ */
+function parseSections(mdx: string): Section[] {
+  // Normalize line endings to \n only (handle Windows \r\n)
+  const normalized = mdx.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
+  const lines = normalized.split('\n')
+  const sections: Section[] = []
+  let currentHeading = ''
+  let currentLevel = 0
+  let currentContent: string[] = []
+
+  for (const line of lines) {
+    // Match markdown headings (## or ###, etc)
+    const headingMatch = line.match(/^(#{1,6})\s+(.+)$/)
+    
+    if (headingMatch) {
+      // Save previous section if it exists
+      if (currentContent.length > 0) {
+        sections.push({
+          heading: currentHeading,
+          level: currentLevel,
+          content: currentContent.join('\n').trim(),
+        })
+      }
+      
+      // Start new section
+      currentLevel = headingMatch[1].length
+      currentHeading = headingMatch[2].trim()
+      currentContent = []
+    } else {
+      // Add content to current section
+      currentContent.push(line)
+    }
+  }
+
+  // Save final section
+  if (currentContent.length > 0) {
+    sections.push({
+      heading: currentHeading,
+      level: currentLevel,
+      content: currentContent.join('\n').trim(),
+    })
+  }
+
+  return sections
+}
+
+/**
+ * Create heading-aware chunks that include section context.
+ * This improves retrieval by preserving the semantic topic boundary.
+ */
+function createHeadingAwareChunks(sections: Section[]): Array<{ text: string; heading: string }> {
+  const result: Array<{ text: string; heading: string }> = []
+  
+  for (const section of sections) {
+    if (!section.content.trim()) continue
+    
+    // Strip markdown from section content (but preserve heading separately)
+    const cleanContent = stripMarkdown(section.content)
+    if (!cleanContent.trim()) continue
+    
+    // Chunk the section content
+    const sectionChunks = chunkText(cleanContent)
+    
+    // Add heading context to each chunk
+    for (const chunk of sectionChunks) {
+      const headingPrefix = section.heading ? `[${section.heading}]\n\n` : ''
+      result.push({
+        text: headingPrefix + chunk,
+        heading: section.heading,
+      })
+    }
+  }
+  
+  return result
 }
 
 /** Strip MDX/markdown syntax for cleaner embeddings */
@@ -173,25 +259,47 @@ async function main() {
   } else {
     for (const { slug, raw, title } of toRebuild) {
       const { content } = matter(raw)
-      const clean = stripMarkdown(content)
-      const textChunks = chunkText(clean)
+      
+      // Parse into sections and create heading-aware chunks
+      const sections = parseSections(content)
+      
+      // Debug: log sections for first post
+      if (slug === 'adding-rag-search-to-my-blog') {
+        console.log(`\n[DEBUG] Sections for ${slug}:`)
+        sections.forEach((s, i) => {
+          console.log(`  Section ${i}: heading="${s.heading}", level=${s.level}, content length=${s.content.length}`)
+        })
+      }
+      
+      const headingAwareChunks = createHeadingAwareChunks(sections)
+      
+      // Debug: log chunks for first post
+      if (slug === 'adding-rag-search-to-my-blog') {
+        console.log(`\n[DEBUG] Chunks for ${slug}:`)
+        headingAwareChunks.forEach((c, i) => {
+          console.log(`  Chunk ${i}: heading="${c.heading}", text preview="${c.text.substring(0, 80)}..."`)
+        })
+        console.log('')
+      }
 
-      console.log(`  embed ${slug} → ${textChunks.length} chunk(s)`)
+      console.log(`  embed ${slug} → ${headingAwareChunks.length} chunk(s)`)
 
       // Remove old chunks for this slug
       store.chunks = store.chunks.filter(c => c.slug !== slug)
 
-      // Embed in one batch per post (small posts are usually 1–3 chunks)
-      const embeddings = await embedBatch(client, textChunks)
+      // Embed in one batch per post
+      const textToEmbed = headingAwareChunks.map(c => c.text)
+      const embeddings = await embedBatch(client, textToEmbed)
 
-      textChunks.forEach((text, i) => {
+      headingAwareChunks.forEach((chunk, i) => {
         store.chunks.push({
           id: `${slug}::${i}`,
           slug,
           title,
-          text,
+          text: chunk.text,
           embedding: embeddings[i],
-          tokenEstimate: estimateTokens(text),
+          tokenEstimate: estimateTokens(chunk.text),
+          heading: chunk.heading,
         })
       })
 
