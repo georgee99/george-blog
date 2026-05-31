@@ -54,6 +54,7 @@ interface Chunk {
   text: string
   embedding: number[]
   tokenEstimate: number
+  heading?: string
 }
 
 interface EmbeddingsStore {
