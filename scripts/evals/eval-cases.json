@@ -73,5 +73,80 @@
     "question": "What is Melbourne like?",
     "expectedSlugs": ["why-melbourne-feels-built-for-wandering"],
     "notes": "Travel/lifestyle post"
+  },
+  {
+    "question": "What mouse do you use?",
+    "expectedSlugs": ["mx-master-3s-review"],
+    "notes": "Specific peripheral review"
+  },
+  {
+    "question": "What headphones do you recommend?",
+    "expectedSlugs": ["bose-qc-35ii-review"],
+    "notes": "Audio equipment review"
+  },
+  {
+    "question": "What are the best gelato flavors?",
+    "expectedSlugs": ["anitas-gelato-tier-list"],
+    "notes": "Food tier list"
+  },
+  {
+    "question": "How do you rank developer tools?",
+    "expectedSlugs": ["dev-tools-ranked"],
+    "notes": "Programming tools comparison"
+  },
+  {
+    "question": "Tell me about breaking production",
+    "expectedSlugs": ["breaking-production"],
+    "notes": "Engineering war story"
+  },
+  {
+    "question": "What music helps you focus?",
+    "expectedSlugs": ["my-go-to-focus-albums"],
+    "notes": "Productivity/music post"
+  },
+  {
+    "question": "What was your experience with .NET Core?",
+    "expectedSlugs": ["dotnet-core-experience"],
+    "notes": "Framework experience post"
+  },
+  {
+    "question": "Why should I use diagrams in documentation?",
+    "expectedSlugs": ["why-diagrams-are-underused"],
+    "notes": "Technical documentation opinion"
+  },
+  {
+    "question": "How can I deal with fear of legacy code?",
+    "expectedSlugs": ["fear-of-touching-legacy-code"],
+    "notes": "Engineering psychology post"
+  },
+  {
+    "question": "What do you think about SOLID principles?",
+    "expectedSlugs": ["companies-solid-principles"],
+    "notes": "Software architecture opinion"
+  },
+  {
+    "question": "What chess openings do you recommend?",
+    "expectedSlugs": ["chess-openings-tier-list"],
+    "notes": "Chess strategy tier list"
+  },
+  {
+    "question": "What is blitz chess like?",
+    "expectedSlugs": ["chess-blitz-hell"],
+    "notes": "Chess experience post"
+  },
+  {
+    "question": "How did you improve your RAG system with evals?",
+    "expectedSlugs": ["adding-rag-evals"],
+    "notes": "Technical improvement post"
+  },
+  {
+    "question": "What is heading-aware chunking?",
+    "expectedSlugs": ["heading-aware-chunking-rag"],
+    "notes": "RAG optimization technique"
+  },
+  {
+    "question": "How do software engineers evolve in their careers?",
+    "expectedSlugs": ["evolution-of-software-engineer"],
+    "notes": "Career development post"
   }
 ]

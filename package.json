@@ -14,7 +14,7 @@
     "generate-email-html-default": "tsx scripts/generate-email/generate-email.ts --use-default-html --slug your-post-slug --author \"George\"",
     "optimize-images": "tsx scripts/optimize-images/optimize-images.ts",
     "build-embeddings": "tsx scripts/build-embeddings/build-embeddings.ts",
-    "run-evals": "tsx scripts/evals/run-evals.ts"
+    "evals": "tsx scripts/evals/run-evals.ts"
   },
   "dependencies": {
     "gray-matter": "^4.0.3",
