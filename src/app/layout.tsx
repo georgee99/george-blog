@@ -49,11 +49,11 @@ export default function RootLayout({
     >
       <body className="min-h-screen bg-background text-foreground antialiased">
         <ThemeProvider>
+          <Nav />
           <div className="mx-auto max-w-2xl px-4 py-10">
-            <Nav />
-            <main className="mt-14">{children}</main>
-            <Footer />
+            <main>{children}</main>
           </div>
+          <Footer />
         </ThemeProvider>
       </body>
     </html>
