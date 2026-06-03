@@ -52,8 +52,8 @@ export default function RootLayout({
           <Nav />
           <div className="mx-auto max-w-2xl px-4 py-10">
             <main>{children}</main>
+            <Footer />
           </div>
-          <Footer />
         </ThemeProvider>
       </body>
     </html>
