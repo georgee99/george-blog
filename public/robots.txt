@@ -1,0 +1,6 @@
+# https://georgeelz.blog/robots.txt
+User-agent: *
+Allow: /
+
+# Sitemaps
+Sitemap: https://georgeelz.blog/sitemap.xml
