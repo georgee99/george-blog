@@ -103,12 +103,12 @@ function generateSitemap(posts: Post[]): string {
  * Main
  */
 function main() {
-  console.log('🗺️  Generating sitemap...')
-  console.log(`📍 Site URL: ${SITE_URL}`)
+  console.log('Generating sitemap...')
+  console.log(`Site URL: ${SITE_URL}`)
 
   // Read all posts
   const posts = getAllPosts()
-  console.log(`📝 Found ${posts.length} published posts`)
+  console.log(`Found ${posts.length} published posts`)
 
   // Generate sitemap XML
   const xml = generateSitemap(posts)
@@ -121,9 +121,9 @@ function main() {
 
   // Write sitemap.xml
   fs.writeFileSync(OUTPUT_PATH, xml, 'utf-8')
-  console.log(`✅ Sitemap written to ${OUTPUT_PATH}`)
-  console.log(`📊 Total URLs: ${STATIC_PAGES.length + posts.length}`)
-  console.log(`\n🌐 Access at: ${SITE_URL}/sitemap.xml`)
+  console.log(`Sitemap written to ${OUTPUT_PATH}`)
+  console.log(`Total URLs: ${STATIC_PAGES.length + posts.length}`)
+  console.log(`\nAccess at: ${SITE_URL}/sitemap.xml`)
 }
 
 main()
