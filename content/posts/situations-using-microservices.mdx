@@ -1,0 +1,69 @@
+---
+title: Ranking situations where I'd use Microservices
+date: 2026-06-15
+description: A tier list of situations where I'd use microservices
+published: true
+tags: ["coding", "ranking"]
+---
+
+Microservices are a modern approach to software architecture. There's a bit of controversy regarding them where some developers think every application needs to be split, whereas others think they're responsible for many outages.
+
+## S Tier
+
+### Netflix scale streaming platform
+An application of this scale would have hundreds of different components. Attempting to make changes would become near impossible if everything was contained within a monolith.
+
+### E-commerce platform
+Splitting into microservices on an E-commerce platform makes a lot of sense, especially when operating at a large scale. For online shopping things like quick deployments and observability are important. Microservices make this much easier.
+
+### Systems with hundreds of engineers
+A hundred engineers working on a single codebase is a horror movie. Typically, enterprise applications have different microservices each managed by their own team. Whilst there is a serious need for communication between them, it beats the latter.
+
+## A Tier
+### AI platform with separate training and inference pipelines
+Training and inference differ significantly in workloads. When a new model is being trained, the training system might consume hundreds of GPUs, whilst at the same time users are still generating images and expecting responses within seconds. Keeping these together creates unnecessary coupling
+
+### Marketplace platform 
+Marketplace platforms naturally have distinct business domains. Uber as an example has things like rider management, payments, customer support, and many others. They each evolve on their own and require changes done separately.
+
+
+## B Tier
+
+### Startup with 10-20 engineers
+This one can go either way. At this point, one codebase definitely feels crowded, but still small enough so that microservices can create more problems than they solve. It comes down to the product owner or the technical lead to discuss whether the team would benefit from being split into smaller groups. In this day and age with AI assisted development, it is more common to follow this split up into smaller teams.
+
+### Growing SaaS products
+It honestly depends. A rapidly growing SaaS product may need microservices. If areas such as billing, reporting, and other background jobs start to evolve into separate systems, it's important to consider splitting up. Until then though, a structured monolith is much simpler to maintain.
+
+## C Tier
+### Internal company tools
+A majority of internal company tools don't need microservices. There are usually only a limited number of users, and low traffic. This might sound bad but they aren't as important as client-facing applications. That being said, at large companies these internal tools may benefit from a microservices approach. Usually though, a clean monolith with good permissions, logging, and maintainable code is good enough
+
+## D Tier
+### Personal side projects
+If I am a recruiter and see a developer who has 8 repositories on a little side project I would block the GitHub profile. Having a microservice implementation for projects which are less than 3 months old is overkill. Development can slow down heavily with this approach and doesn't properly give you an understanding of the benefits.
+
+### Small CRUD applications
+Applications which spend their entire lives performing simple reads and writes from a database should not need multiple services. There's no real benefit in terms of scalability. If anything, maintenance becomes much more difficult.  
+
+### Hackathons
+The project has only been alive for 4 hours, and doesn't even have a database yet. Requirements aren't even outlined properly, so discussions of splitting up the codebase shouldn't even exist.
+
+## F Tier
+### Todo apps
+I've never personally seen one, but I know they're out there. Creating a to-do list does not require multiple codebases, analytics, and any real advanced cloud infrastructure. The entire application could fit inside a controller and a database table. 
+
+### Projects built to learn Kubernetes
+I understand, but also I probably wouldn't put it on my resume
+
+## My take
+Most applications don't start at Netflix scale, but instead just a few users and one engineer trying their best. Microservices are great when they solve a real scaling or organisational problem, but they're a pain when solving an imaginary future one. If your application has hundreds of engineers, it might be time to consider a microservices approach. If it's a todo app with 5 users, probably not. The best architecture isn't the most impressive and detailed, but one which your team can build and maintain successfully.
+
+<div className="not-prose">
+  <img
+    src="/meow/M24.png"
+    alt="My cat"
+    className="mx-auto block w-72"
+    style={{ height: "auto" }}
+  />
+</div>
