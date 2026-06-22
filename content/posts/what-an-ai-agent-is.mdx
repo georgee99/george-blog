@@ -1,0 +1,42 @@
+---
+title: What an AI Agent actually is
+date: 2026-06-22
+description: What an AI Agent does and its difference from regular workflows
+published: true
+tags: ["tech", "coding"]
+---
+
+The word AI agent has been thrown around in nearly every AI related article I've read. Every company seems to be building them, and there's thousands of LinkedIn posts talking about how agentic AI is going to change the world. The problem is that when you actually stop and ask what an AI agent is, the answer becomes complicated. After spending the last couple of weeks looking into the topic, I've come to the conclusion that many people using the term don't actually agree on what it means, and that there isn't a clear central definition.
+
+At first I thought an AI agent was literally just an LLM with access to tools. If ChatGPT can search the web, call an API, or query a database, then that would classify as an agent. It turns out the answer isn't that simple. A chatbot can use tools without really being an agent. Similarly, a workflow can perform multiple actions without being autonomous. 
+
+One of the most common examples you'll see is an LLM that can call a weather API. The user asks whether it's going to rain tomorrow, the model decides to call the weather service, recieves the result, and returns an answer. Although this is useful,it's not enough to qualify as an agent. The entire process is still fairly deterministic. The model recieves a request, performs an action, and returns a response. There isn't much decision making involved beyond selecting a tool.
+
+## The software spectrum
+
+I think the easiest way to understand agents is to look at software as a spectrum. Traditional software sits at one end. A calculator doesn't make decisions and every possible path is defined by a developer. Then you have LLM-powered software which introduces some flexibility but still follows a predefined flow. After that come workflows where an LLM might influence how tasks are performed, but the overall sequence of steps remains fixed. Agents seem to sit further along that spectrum because they are given a goal rather than a script.
+
+As an example, if you ask a developer to produce a monthly sales report and email it out, most of them would know how to do this with no questions asked. Ideally they would gather data, validate it, generate the report, and send the email. AI agents operate in a similar way. Instead of being told exactly what to do, they are given an outcome and expected to figure out how to get the results. 
+
+## How agents work
+
+From a technical pov, most agents are built around a loop. The agent recieves a goal, decides what to perform based on its current state, executes that action, and then re-evaluates the situation. This continues until the goal is completed or some termination is reached. A simple implementation as an example is an LLM selecting from a list of available tools. This includes web search, database queries, or API calls. The result of each tool call is fed back into the model. Unlike a traditional workflow where the sequences are predefined, the path taken by an agent can vary depending on the information it discovers along the way. This is often referred to as an agent loop, where the model repeatedly reasons, acts, and observeres until it reaches the goal or decides it can't make any more progress (it gives up).
+
+The characteristic that stands out most is decision making. An agent must be capable of determining what action to perform next based on the information it currently has. It could search the web, read documents, decide the information is insufficient, perform another search, compare results, and only then provide an answer. The important detail is that the path isn't entirely predetermined. The system is adapting as it goes rather than blindly executing a sequence of instructions.
+
+This next part is the controversial bit, but a lot of products marketed as agents are actually workflows. If every step is known ahead of time, then it's not really an agent but actually a flowchart with an LLM attached to it. It's actually not a bad thing though. Most of the time these kind of workflows are easier to understand, cheaper to run, and more reliable. The issue is that the term agent is sometimes used so often that it loses its meaning.
+
+## My take
+
+It's a bit strange that people throw around the word AI agent without real understanding or there also being no proper definition. I understand that it's great for clicks, but it creates a lot of confusion. My current opinion is that an AI agent needs a goal, access to tools, and the ability to decide what to do next. Without these, the system is more like a chatbot or a workflow. The exact implementation doesn't matter much. If the system can decide how to achieve an outcome and not just follow instructions, then it meets the criteria.
+
+The funny thing is that after all this reading, I think I've become less interested in agents themselves and more interested in where they make sense. Not every application needs a collection of autonomous agents reasoning about what to do next. Sometimes a simple workflow is the better engineering choice. The challenge is knowing the difference.
+
+<div className="not-prose">
+  <img
+    src="/meow/S26.png"
+    alt="My cat"
+    className="mx-auto block w-60"
+    style={{ height: "auto" }}
+  />
+</div>
