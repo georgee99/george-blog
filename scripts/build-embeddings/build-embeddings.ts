@@ -35,6 +35,7 @@ interface Chunk {
   embedding: number[]
   tokenEstimate: number
   heading?: string // The section heading this chunk belongs to
+  tags?: string[] // Frontmatter tags for filtering
 }
 
 interface EmbeddingsStore {
@@ -243,7 +244,8 @@ async function main() {
     }
 
     console.log(`  queue ${slug} (new or changed)`)
-    toRebuild.push({ slug, raw, title: data.title ?? slug })
+    const tags = Array.isArray(data.tags) ? data.tags.map(String) : []
+    toRebuild.push({ slug, raw, title: data.title ?? slug, tags })
   }
 
   // Remove chunks for deleted/unpublished posts
@@ -257,7 +259,7 @@ async function main() {
   if (toRebuild.length === 0) {
     console.log('Nothing to update.')
   } else {
-    for (const { slug, raw, title } of toRebuild) {
+    for (const { slug, raw, title, tags } of toRebuild) {
       const { content } = matter(raw)
       
       // Parse into sections and create heading-aware chunks
@@ -300,6 +302,7 @@ async function main() {
           embedding: embeddings[i],
           tokenEstimate: estimateTokens(chunk.text),
           heading: chunk.heading,
+          tags,
         })
       })
 

@@ -55,6 +55,7 @@ interface Chunk {
   embedding: number[]
   tokenEstimate: number
   heading?: string
+  tags?: string[]
 }
 
 interface EmbeddingsStore {
@@ -80,15 +81,59 @@ function estimateTokens(text: string): number {
   return Math.ceil(text.length / CHARS_PER_TOKEN)
 }
 
+function extractQueryTags(question: string): Set<string> {
+  const q = question.toLowerCase()
+  const tags = new Set<string>()
+  
+  // Extract meaningful tag signals from query
+  if (q.match(/\bmovies?\b|\bfilms?\b|\bcinema\b/)) tags.add('movie')
+  if (q.match(/\btv\b|\bepisodes?\b|\bseries\b|\bsitcom\b/)) tags.add('tv')
+  if (q.match(/\bgames?\b|\bgaming\b/)) tags.add('game')
+  if (q.match(/\bmusic\b|\balbums?\b|\bsongs?\b/)) tags.add('music')
+  if (q.match(/\bwatchs?\b|\bwatches\b/)) tags.add('watch')
+  if (q.match(/\bcoffee\b/)) tags.add('coffee')
+  if (q.match(/\bfood\b|\bgelato\b/)) tags.add('food')
+  if (q.match(/\btech\b|\bsoftware\b|\bcode\b|\bdev\b/)) tags.add('tech')
+  
+  return tags
+}
+
 function loadStore(): EmbeddingsStore | null {
   const storePath = path.join(process.cwd(), 'data/embeddings.json')
   if (!fs.existsSync(storePath)) return null
   return JSON.parse(fs.readFileSync(storePath, 'utf-8')) as EmbeddingsStore
 }
 
-function selectChunks(queryEmbedding: number[], chunks: Chunk[]): Chunk[] {
+function selectChunks(query: string, queryEmbedding: number[], chunks: Chunk[]): Chunk[] {
+  const queryTags = extractQueryTags(query)
+
   const scored = chunks
-    .map(c => ({ chunk: c, score: cosine(queryEmbedding, c.embedding) }))
+    .map(c => {
+      const baseScore = cosine(queryEmbedding, c.embedding)
+      const chunkTags = new Set(c.tags ?? [])
+
+      let adjustedScore = baseScore
+      
+      // Boost if chunk has any query-relevant tags
+      if (queryTags.size > 0 && chunkTags.size > 0) {
+        const hasMatch = Array.from(queryTags).some(tag => chunkTags.has(tag))
+        if (hasMatch) {
+          adjustedScore += 0.10
+        } else {
+          // Penalize conflicting media types
+          const mediaTypes = new Set(['movie', 'tv', 'game'])
+          const queryMedia = Array.from(queryTags).filter(t => mediaTypes.has(t))
+          const chunkMedia = Array.from(chunkTags).filter(t => mediaTypes.has(t))
+          
+          if (queryMedia.length > 0 && chunkMedia.length > 0) {
+            const hasConflict = !queryMedia.some(t => chunkMedia.includes(t))
+            if (hasConflict) adjustedScore -= 0.15
+          }
+        }
+      }
+
+      return { chunk: c, score: adjustedScore }
+    })
     .sort((a, b) => b.score - a.score)
 
   if (process.env.NODE_ENV === 'development') {
@@ -206,7 +251,7 @@ export async function POST(req: NextRequest) {
   const queryEmbedding = embeddingRes.data[0].embedding
 
   // Retrieve relevant chunks
-  const selectedChunks = selectChunks(queryEmbedding, store.chunks)
+  const selectedChunks = selectChunks(sanitized, queryEmbedding, store.chunks)
 
   if (process.env.NODE_ENV === 'development') {
     console.log('[ask] selected chunks:', selectedChunks.map(c => `${c.id} (${c.tokenEstimate} tokens)`))

@@ -42,6 +42,7 @@ interface Chunk {
   embedding: number[]
   tokenEstimate: number
   heading?: string
+  tags?: string[]
 }
 
 interface EmbeddingsStore {
@@ -71,10 +72,54 @@ function estimateTokens(text: string): number {
   return Math.ceil(text.length / CHARS_PER_TOKEN)
 }
 
+function extractQueryTags(question: string): Set<string> {
+  const q = question.toLowerCase()
+  const tags = new Set<string>()
+  
+  // Extract meaningful tag signals from query
+  if (q.match(/\bmovies?\b|\bfilms?\b|\bcinema\b/)) tags.add('movie')
+  if (q.match(/\btv\b|\bepisodes?\b|\bseries\b|\bsitcom\b/)) tags.add('tv')
+  if (q.match(/\bgames?\b|\bgaming\b/)) tags.add('game')
+  if (q.match(/\bmusic\b|\balbums?\b|\bsongs?\b/)) tags.add('music')
+  if (q.match(/\bwatchs?\b|\bwatches\b/)) tags.add('watch')
+  if (q.match(/\bcoffee\b/)) tags.add('coffee')
+  if (q.match(/\bfood\b|\bgelato\b/)) tags.add('food')
+  if (q.match(/\btech\b|\bsoftware\b|\bcode\b|\bdev\b/)) tags.add('tech')
+  
+  return tags
+}
+
 // Retrieval (mirrors route.ts selectChunks)
-function selectChunks(queryEmbedding: number[], chunks: Chunk[]): Chunk[] {
+function selectChunks(query: string, queryEmbedding: number[], chunks: Chunk[]): Chunk[] {
+  const queryTags = extractQueryTags(query)
+
   const scored = chunks
-    .map(c => ({ chunk: c, score: cosine(queryEmbedding, c.embedding) }))
+    .map(c => {
+      const baseScore = cosine(queryEmbedding, c.embedding)
+      const chunkTags = new Set(c.tags ?? [])
+
+      let adjustedScore = baseScore
+      
+      // Boost if chunk has any query-relevant tags
+      if (queryTags.size > 0 && chunkTags.size > 0) {
+        const hasMatch = Array.from(queryTags).some(tag => chunkTags.has(tag))
+        if (hasMatch) {
+          adjustedScore += 0.10
+        } else {
+          // Penalize conflicting media types
+          const mediaTypes = new Set(['movie', 'tv', 'game'])
+          const queryMedia = Array.from(queryTags).filter(t => mediaTypes.has(t))
+          const chunkMedia = Array.from(chunkTags).filter(t => mediaTypes.has(t))
+          
+          if (queryMedia.length > 0 && chunkMedia.length > 0) {
+            const hasConflict = !queryMedia.some(t => chunkMedia.includes(t))
+            if (hasConflict) adjustedScore -= 0.15
+          }
+        }
+      }
+
+      return { chunk: c, score: adjustedScore }
+    })
     .sort((a, b) => b.score - a.score)
 
   const seenSlugs = new Set<string>()
@@ -193,7 +238,7 @@ async function main() {
       input: evalCase.question,
     })
     const queryEmbedding = res.data[0].embedding
-    const retrieved = selectChunks(queryEmbedding, store.chunks)
+    const retrieved = selectChunks(evalCase.question, queryEmbedding, store.chunks)
     const caseScore = scoreCase(evalCase, retrieved)
     results.push(caseScore)
   }
