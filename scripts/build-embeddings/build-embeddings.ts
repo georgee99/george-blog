@@ -225,7 +225,7 @@ async function main() {
 
   // Read all published posts
   const files = fs.readdirSync(POSTS_DIR).filter(f => f.endsWith('.mdx'))
-  const toRebuild: { slug: string; raw: string; title: string }[] = []
+  const toRebuild: { slug: string; raw: string; title: string; tags: string[] }[] = []
   const currentSlugs = new Set<string>()
 
   for (const file of files) {
