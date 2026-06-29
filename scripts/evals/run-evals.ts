@@ -19,6 +19,7 @@ import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import OpenAI from 'openai'
+import MiniSearch from 'minisearch'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -27,9 +28,12 @@ const ROOT = path.join(__dirname, '../../')
 // Config (must match route.ts)
 const EMBEDDING_MODEL = 'text-embedding-3-small'
 const TOP_K = 5
-const SIMILARITY_THRESHOLD = 0.30
 const CONTEXT_TOKEN_CAP = 2500
 const CHARS_PER_TOKEN = 4
+
+// Hybrid search config (must match route.ts)
+const SEMANTIC_WEIGHT = 0.80
+const KEYWORD_WEIGHT = 0.20
 
 const SYSTEM_PROMPT_TOKEN_ESTIMATE = 200 // conservative estimate
 
@@ -89,56 +93,147 @@ function extractQueryTags(question: string): Set<string> {
   return tags
 }
 
-// Retrieval (mirrors route.ts selectChunks)
+function buildKeywordIndex(chunks: Chunk[]): MiniSearch<Chunk> {
+  const index = new MiniSearch<Chunk>({
+    fields: ['text', 'title', 'heading'], // Fields to index
+    storeFields: ['id', 'slug', 'title', 'text', 'tokenEstimate', 'heading', 'tags'], // Fields to store
+    searchOptions: {
+      boost: { title: 3, heading: 2, text: 1 }, // Boost title and heading
+      fuzzy: 0.2, // Allow some typos
+    },
+  })
+
+  index.addAll(chunks)
+  return index
+}
+
+// Retrieval (mirrors route.ts selectChunks with hybrid search)
 function selectChunks(query: string, queryEmbedding: number[], chunks: Chunk[]): Chunk[] {
   const queryTags = extractQueryTags(query)
 
-  const scored = chunks
-    .map(c => {
-      const baseScore = cosine(queryEmbedding, c.embedding)
-      const chunkTags = new Set(c.tags ?? [])
+  // Semantic search part
+  const semanticScored = chunks.map(c => {
+    const baseScore = cosine(queryEmbedding, c.embedding)
+    const chunkTags = new Set(c.tags ?? [])
 
-      let adjustedScore = baseScore
-      
-      // Boost if chunk has any query-relevant tags
-      if (queryTags.size > 0 && chunkTags.size > 0) {
-        const hasMatch = Array.from(queryTags).some(tag => chunkTags.has(tag))
-        if (hasMatch) {
-          adjustedScore += 0.10
-        } else {
-          // Penalize conflicting media types
-          const mediaTypes = new Set(['movie', 'tv', 'game'])
-          const queryMedia = Array.from(queryTags).filter(t => mediaTypes.has(t))
-          const chunkMedia = Array.from(chunkTags).filter(t => mediaTypes.has(t))
-          
-          if (queryMedia.length > 0 && chunkMedia.length > 0) {
-            const hasConflict = !queryMedia.some(t => chunkMedia.includes(t))
-            if (hasConflict) adjustedScore -= 0.15
-          }
+    let adjustedScore = baseScore
+    
+    // Boost if chunk has any query-relevant tags
+    if (queryTags.size > 0 && chunkTags.size > 0) {
+      const hasMatch = Array.from(queryTags).some(tag => chunkTags.has(tag))
+      if (hasMatch) {
+        adjustedScore += 0.10
+      } else {
+        // Penalize conflicting media types
+        const mediaTypes = new Set(['movie', 'tv', 'game'])
+        const queryMedia = Array.from(queryTags).filter(t => mediaTypes.has(t))
+        const chunkMedia = Array.from(chunkTags).filter(t => mediaTypes.has(t))
+        
+        if (queryMedia.length > 0 && chunkMedia.length > 0) {
+          const hasConflict = !queryMedia.some(t => chunkMedia.includes(t))
+          if (hasConflict) adjustedScore -= 0.15
         }
       }
+    }
 
-      return { chunk: c, score: adjustedScore }
-    })
+    return { chunk: c, score: adjustedScore, source: 'semantic' as const }
+  })
+
+  // Keyword search part
+  const index = buildKeywordIndex(chunks)
+  const keywordResults = index.search(query, { 
+    boost: { title: 3, heading: 2, text: 1 },
+    fuzzy: 0.2,
+  })
+  
+  // Map keyword results to chunk objects with scores
+  const keywordScored = keywordResults.map(result => {
+    const chunk = chunks.find(c => c.id === result.id)!
+    return { chunk, score: result.score, source: 'keyword' as const }
+  })
+
+  // Normalisation
+  const semanticScores = semanticScored.map(r => r.score)
+  const semanticMin = Math.min(...semanticScores)
+  const semanticMax = Math.max(...semanticScores)
+  const semanticRange = semanticMax - semanticMin || 1
+
+  const normalizedSemantic = semanticScored.map(r => ({
+    ...r,
+    normalizedScore: (r.score - semanticMin) / semanticRange
+  }))
+
+  // Normalize keyword scores
+  const keywordScores = keywordScored.map(r => r.score)
+  const keywordMin = keywordScores.length > 0 ? Math.min(...keywordScores) : 0
+  const keywordMax = keywordScores.length > 0 ? Math.max(...keywordScores) : 1
+  const keywordRange = keywordMax - keywordMin || 1
+
+  const normalizedKeyword = keywordScored.map(r => ({
+    ...r,
+    normalizedScore: (r.score - keywordMin) / keywordRange
+  }))
+
+  // HYBRID MERGE: Combine both result sets, merging duplicates with weighted scores
+  const hybridMap = new Map<string, { chunk: Chunk; hybridScore: number; sources: string[] }>()
+
+  // Add semantic results
+  normalizedSemantic.forEach(({ chunk, normalizedScore }) => {
+    const existing = hybridMap.get(chunk.id)
+    if (existing) {
+      existing.hybridScore += SEMANTIC_WEIGHT * normalizedScore
+      existing.sources.push('semantic')
+    } else {
+      hybridMap.set(chunk.id, {
+        chunk,
+        hybridScore: SEMANTIC_WEIGHT * normalizedScore,
+        sources: ['semantic']
+      })
+    }
+  })
+
+  // Add keyword results
+  normalizedKeyword.forEach(({ chunk, normalizedScore }) => {
+    const existing = hybridMap.get(chunk.id)
+    if (existing) {
+      existing.hybridScore += KEYWORD_WEIGHT * normalizedScore
+      existing.sources.push('keyword')
+    } else {
+      hybridMap.set(chunk.id, {
+        chunk,
+        hybridScore: KEYWORD_WEIGHT * normalizedScore,
+        sources: ['keyword']
+      })
+    }
+  })
+
+  // Convert to array and sort by hybrid score
+  const hybridScored = Array.from(hybridMap.values())
+    .map(({ chunk, hybridScore, sources }) => ({
+      chunk,
+      score: hybridScore,
+      sources: sources.join('+')
+    }))
     .sort((a, b) => b.score - a.score)
 
+  // Deduplication and filtering
   const seenSlugs = new Set<string>()
-  const deduplicated = scored.filter(r => {
-    if (r.score < SIMILARITY_THRESHOLD) return false
+  const deduplicated = hybridScored.filter(r => {
+    if (r.score < 0.1) return false
     if (seenSlugs.has(r.chunk.slug)) return false
     seenSlugs.add(r.chunk.slug)
     return true
   }).slice(0, TOP_K)
 
+  // Token-budget selection
   const selected: Chunk[] = []
   let used = 0
 
-  for (const { chunk, score } of deduplicated) {
+  for (const { chunk } of deduplicated) {
     const chunkTokens = chunk.tokenEstimate ?? estimateTokens(chunk.text)
     if (selected.length > 0 && used + chunkTokens + SYSTEM_PROMPT_TOKEN_ESTIMATE > CONTEXT_TOKEN_CAP) break
     selected.push(chunk)
     used += chunkTokens
-    void score
   }
 
   return selected

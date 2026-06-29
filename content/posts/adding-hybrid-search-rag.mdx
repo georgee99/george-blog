@@ -1,0 +1,78 @@
+---
+title: Adding Hybrid Search to my RAG
+date: 2026-06-29
+description: How I added hybrid search tooling to my blog's RAG pipeline
+published: true
+tags: ["coding","tech"]
+---
+
+Previous: LINK ARTICLE HERE
+
+## Why embeddings weren't enough
+
+My RAG search is decent at the moment. It's getting the job done, but there are still plenty of limitations and room for improvement. Right now it's just a semantic search which looks up embeddings which are stored in a vector database. It retrieves chunks using cosine similarity. I initially improved my chunking strategy, and added retrieval evals which definitely helped. However there are certain terms and questions which didn't always retrieve the chunks I expected. I know I'm using the cheapest tier for the LLM model, but I know that the retrieval itself was causing these minor issues. 
+
+I mentioned in a previous blog that I wanted to make some future improvements. Hybrid search was something that I read about. Truth be told, I don't know the full impact this would have. I'll be measuring the impact it has and documenting it here.
+
+## The problem with only semantic search
+
+Semantic search is an advanced retrieval method which understands context, meaning, and intent behind a query. It doesn't just match keywords, but it actually converts both docuemnts and queries into vector embeddings so it can compare meaning rather than text. There's nothing inheritenly wrong with it alone, and actually works really well. A perfect example is that if I were to ask something like "What keyboard does George use?", it would instantly return my blog review of the Wobkey Rainy75. If I were to use keyword search only, I don't think this would be the case. However, there are times where it struggles. For example, if I mention singular keywords such as "TypeScript" or "Cat", then it won't perform as well.
+
+When it comes to RAG, retrieval is the bottleneck. If the retrieval step fails to find the chunks, the model has no way of knowing it exists. It's critical to build a solid RAG system that is actually about retrieval rather than generation. 
+
+## What hybrid search is
+
+Hybrid search is when semantic and keyword search are blended together. It improves retrieval context, and reduces the chances of overconfident and irrelevant answers since it has an improved understanding of context and meaning. Keyword search alone look for exact words and phrases, which makes it reliable when looking for things like product names, technologies, acronyms, cat names, etc. For the non-tech users reading this, all you need to understand is that the lookup under a hybrid search can think both literally and contextually.
+
+In my case, I kept my existing vector/semantic search and added the keyword search over my blog content. Both seraches return thei rown list of relevant chunks, which are then merged, deduplicated, and ranked before being sent to the LLM. I had to code it so that the semantic search was not replaced, but improved where situations where embeddings alone aren't as reliable.
+
+## Problems I ran into
+### Combining Different Scoring Systems
+One problem I ran into straight away was that the two search systems scored results completely differently. Vector search returns cosine similarity scores, which are decimal values between 0 and 1. Keyword search returns relevance scores based on things like term frequency and rarity (BM25 for me), which are often much larger numbers. It wouldn't make sense to compare these scores together.
+
+For example, vector search returns a chunk with a similarity score of 0.91, while keyword search returns another chunk with a relevance score of 18.4. The keyword score isn't 20 times better just because it's a bigger number, they're just measuring completely different things.
+
+Before merging the results, I scaled both scoring systems onto the same range. This let me rank chunks fairly regardless of which retrieval method they came from. Once they were on a comparable scale, it was all fair.
+
+### Deduplicating results
+Another thing I had to figure out was that the same chunk could be returned by both the semantic and keyword searches. Without deduplication, the final context sent to the LLM can contain duplicate information. This would waste tokens and reduce the diversity of content. On a larger scale application it'd be costly. To avoid this I merged results which referred to the same chunk, keeping only the highest combined score. This meant each piece of content only appeared once while still benefiting from being found with both retrieval methods.
+
+### Balancing Semantic vs Keyword Search
+When I developed the keyword search and made it decent, I had to decide how much influence they should each have. My initial thought was just to go 50/50 but I quickly figured out that was wrong. When I did some research, all sources explicitly said it depends on the domain of your project/business (Source) [https://www.reddit.com/r/Rag/comments/1ov3k87/when_to_use_semantic_vs_keyword_search_vs_hybird/]. This didn't really help as RAG in general is overkill for this blog, and the point of this is to learn. However if I were to imagine this were a large enterprise news site, I'd place a large emphasis on non-exact matches and more on natural language queries. That's what I did here, and I settled on a weighted combination which favoured semantic search. I don't have user data and observability implemented (yet), but I think that most of my users have the primary goal of trying to find understanding and content, and not searching for exact keywords or exact matches. 
+
+I don't think this weighted balance is going to hold up forever, and I'll probably end up tweaking it later on, especially once I start collecting user data.
+
+## Results
+
+<div className="[&_td:last-child]:min-w-64 [&_th:last-child]:min-w-64 [&_td:nth-child(2)]:min-w-48 [&_th:nth-child(2)]:min-w-48 [&_td:nth-child(5)]:hidden [&_th:nth-child(5)]:hidden [&_td:nth-child(6)]:hidden [&_th:nth-child(6)]:hidden [&_td:nth-child(7)]:hidden [&_th:nth-child(7)]:hidden [&_td:nth-child(5)]:md:table-cell [&_th:nth-child(5)]:md:table-cell [&_td:nth-child(6)]:md:table-cell [&_th:nth-child(6)]:md:table-cell [&_td:nth-child(7)]:md:table-cell [&_th:nth-child(7)]:md:table-cell">
+| Query | Before | After |
+|---:|---|---|
+| Rainy75 | Didn't retrieve review | Retrieved correct review |
+| .NET 8 | Didn't retrieve blog | Didn't retrieve blog |
+| Hamilton | Didn't retrieve review | Retrieved correct review |
+</div>
+
+The biggest win was with exact product names and technical terms that semantic search used to miss entirely. Queries like "Rainy75" or "Hamilton" now actually work instead of returning random chunks about productivity or coffee. It's not perfect, but keyword search filled in the gaps where embeddings alone were basically guessing.
+
+## Future improvements
+
+Hybrid search has improved the quality of the retrieval in this blog, but there's definitely more room for improvement and reliability. The next thing I want to explore is reranking. I'll have a second model evaluate the retrieved chunks, and reorder them based on how well they answer the user's question rather than solely relying on retrieval scores. I'll just have to be careful with my usage limits. 
+
+I also want to investigate query rewriting to improve searches which are ambiguous or vague. Foe example, if someone searches "keyboard", the system could rewrite it into something more specific like "What keyboard does George use or review on his blog?". This could help retrieval beacuse the rewritten query contains more context and better matches the way my chunks are written. However, there is a danger that it can change the user's intent, so it would need to be tested carefully rather than blindly trusted.
+
+I also want to improve my eval suite so I can properly measure whether these changes are actually helping. Not that it matters, I'll still implement them either way though since the goal of this is to learn. My original evals are focused on natural language questions, and only recently tested with keyword queries such as "Rainy75", "Hamilton", "Cat", etc. Adding different categories of test cases would make the evals more useful because I could see which kinds of questions improved and which ones start failing. This would stop me from relying on vibes and actually give me a clearer way to compare each retrieval change.
+
+I'd also want to add confidence scoring. Rather than always generating an answer, the system could estimate how confident it is in the retrieval. If that confident falls below a threshold, it would admit it doesn't know the answer instead of returning something which is misleading or wrong. I think this would also improve user experience too.
+
+## My take
+
+Adding hybrid search was a good lesson/reminder that the LLM model isn't the most important thing. Most of the work goes into everything before the model even generates a response. All of these improvements are important as they not only solve problems, but expose others. It's imperative for my learning and is the most fun part of building this blog.
+
+<div className="not-prose">
+  <img
+    src="/meow/M27.png"
+    alt="my cat"
+    className="mx-auto block w-50"
+    style={{ height: "auto" }}
+  />
+</div>
