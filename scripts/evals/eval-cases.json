@@ -148,5 +148,65 @@
     "question": "How do software engineers evolve in their careers?",
     "expectedSlugs": ["evolution-of-software-engineer"],
     "notes": "Career development post"
+  },
+  {
+    "question": "Rainy75",
+    "expectedSlugs": ["wobkey-rainy-75-review"],
+    "notes": "Keyword search: exact keyboard model name"
+  },
+  {
+    "question": "Hamilton",
+    "expectedSlugs": ["hamilton-khaki-field"],
+    "notes": "Keyword search: exact watch brand"
+  },
+  {
+    "question": "NoSQL",
+    "expectedSlugs": ["why-i-prefer-nosql-over-sql"],
+    "notes": "Keyword search: exact database technology"
+  },
+  {
+    "question": ".NET",
+    "expectedSlugs": ["dotnet-core-experience"],
+    "notes": "Keyword search: exact framework name"
+  },
+  {
+    "question": "TypeScript",
+    "expectedSlugs": ["software-engineer-to-ai-engineer"],
+    "notes": "Keyword search: programming language mentioned in career transition post"
+  },
+  {
+    "question": "MX Master 3S",
+    "expectedSlugs": ["mx-master-3s-review"],
+    "notes": "Keyword search: exact mouse model"
+  },
+  {
+    "question": "Bose",
+    "expectedSlugs": ["bose-qc-35ii-review"],
+    "notes": "Keyword search: headphone brand"
+  },
+  {
+    "question": "Casio",
+    "expectedSlugs": ["casio-mtp-moonphase"],
+    "notes": "Keyword search: watch brand"
+  },
+  {
+    "question": "Swatch",
+    "expectedSlugs": ["swatch-clearly-gent"],
+    "notes": "Keyword search: watch brand"
+  },
+  {
+    "question": "microservices",
+    "expectedSlugs": ["situations-using-microservices"],
+    "notes": "Keyword search: architecture term"
+  },
+  {
+    "question": "AI agent",
+    "expectedSlugs": ["what-an-ai-agent-is"],
+    "notes": "Keyword search: exact technical term"
+  },
+  {
+    "question": "hybrid search",
+    "expectedSlugs": ["adding-hybrid-search-rag"],
+    "notes": "Keyword search: RAG improvement technique"
   }
 ]
