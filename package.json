@@ -16,6 +16,7 @@
     "optimize-images": "tsx scripts/optimize-images/optimize-images.ts",
     "build-embeddings": "tsx scripts/build-embeddings/build-embeddings.ts",
     "evals": "tsx scripts/evals/run-evals.ts",
+    "build-embeddings-and-evals": "npm run build-embeddings && npm run evals",
     "generate-sitemap": "tsx scripts/generate-sitemap/generate-sitemap.ts"
   },
   "dependencies": {

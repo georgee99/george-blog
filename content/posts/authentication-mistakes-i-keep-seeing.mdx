@@ -1,0 +1,50 @@
+---
+title: Authentication mistakes I keep seeing
+date: 2026-07-03
+description: Common authentication mistakes that still appear in modern applications
+published: true
+tags: ["coding","tech"]
+---
+
+Authentication is an essential for real world applications, yet it is still surprisingly easy to get wrong. Most developers only build it a handful of times throughout their career, so it makes sense that mistakes happen. I have worked with JWT authentication, SSO, OAuth and OpenID Connect, and there are a few patterns that continue to show up. Here are the ones I keep seeing the most.
+
+## Rolling your own authentication
+
+Authentication looks suspiciously simple from the outside. You just create a login page, generate a token and suddenly it feels like the job is complete. In reality there are countless edge cases involving password resets, session expiry, account recovery, email verification and brute force protection. Unless there is a very good reason, I would rather rely on a mature solution than spend weeks rebuilding something that already exists.
+
+## Mixing up authentication and authorization
+
+This is probably the most common misunderstanding I see. Authentication is responsible for proving who a user is, while authorization decides what they are allowed to do once they are signed in. I have seen APIs where a valid token was enough to access administrator functionality simply because nobody checked the user's permissions. These two concepts work together, but they solve completely different problems.
+
+## Trusting information from the frontend
+
+The frontend should never be treated as a trusted source of information, even if you wrote the code yourself. If a request contains a user identifier, role or organisation identifier, the backend should validate it rather than accepting it blindly. A malicious user can modify requests much more easily than many developers realise. The backend should always derive permissions from the authenticated user instead of trusting whatever arrives over the network.
+
+## Making JWTs live forever
+
+JWTs are great because they are stateless and easy to validate, but that does not mean they should never expire. If a token is stolen and it remains valid for months, an attacker has plenty of time to abuse it. Short lived access tokens combined with refresh tokens provide a much better balance between security and usability. Users rarely notice the difference, but your application becomes much more resilient.
+
+## Forgetting that logout exists
+
+A surprising number of authentication systems only focus on signing users in. Logging out is treated as deleting a token from local storage and calling it a day. Depending on how your application works, that might not actually invalidate the user's session at all. Thinking about session expiry, refresh token revocation and password changes makes logout much more meaningful.
+
+## Logging sensitive information
+
+Logs are incredibly useful for debugging until they accidentally contain information they never should have stored. I have seen applications log JWTs, Authorization headers and even user passwords during debugging. Those logs often live much longer than the requests themselves and are accessible to many people across an organisation. Treat your logs like production data because that is exactly what they become.
+
+## Assuming OAuth solves everything
+
+OAuth is one of the most misunderstood technologies in software engineering. Many developers think implementing Google Login means they have authentication completely solved. OAuth is primarily about delegated access to resources, while OpenID Connect builds on top of it to provide authentication. Understanding the distinction makes the whole ecosystem much easier to reason about.
+
+## My take
+
+Authentication is one of those areas where small mistakes can have very large consequences. Most of these issues are caused by underestimating how many moving parts exist within a modern authentication system. My advice is to keep things as simple as possible, use well maintained libraries where appropriate and spend some time understanding the technologies rather than copying the first tutorial that appears online. It will save you a lot of headaches down the line.
+
+<div className="not-prose">
+  <img
+    src="/meow/S28.png"
+    alt="my cat"
+    className="mx-auto block w-60"
+    style={{ height: "auto" }}
+  />
+</div>
