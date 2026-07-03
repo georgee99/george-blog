@@ -300,7 +300,7 @@ Rules:
   - short paragraphs
   - occasional sentence fragments
 - Cite sources inline using:
-  (from "https://georgeelz.blog/blog/<slug>")
+  (from https://georgeelz.blog/blog/<slug>)
 - At the end of a real answer, include:
   Sources:
   - https://georgeelz.blog/blog/<slug>`
