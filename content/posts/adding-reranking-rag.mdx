@@ -1,0 +1,72 @@
+---
+title: Adding Re-Ranking to my RAG
+date: 2026-07-06
+description: Improving retrieval quality with GPT-based re-ranking
+published: true
+tags: ["coding","tech"]
+---
+
+**Previous**: [Adding Hybrid Search to my RAG](/blog/adding-hybrid-search-rag)
+
+## Why hybrid search still wasn't enough
+
+Hybrid search definitely improved my RAG system. It solved a lot of the issues I had with exact product names, technologies, and keywords which semantic search struggled with. It also made retrieval feel much more reliable overall. However, after playing around with it for a while I noticed there was still another limitation.
+
+The problem causing issues was that chunks weren't always retrieved in the best order. Sometimes I'd ask a question where the perfect chunk existed, but it would appear third or fourth in the ranking rather than first. Since my RAG pipeline still has a token budget, this meant better chunks could sometimes be excluded in favour of slightly less relevant ones. I'd already improved retrieval itself, so now I wanted to improve the quality of the ranking.
+
+## What re-ranking is
+
+Re-ranking is basically a second opinion on a query. The first stage of my RAG pipeline still performs a hybrid search exactly like before. Instead of retrieving the top five chunks though, I now retrieve around fifteen candidate chunks. Rather than immediately sending these to the final LLM, I ask another model to rank them based on how well they answer the user's question.
+
+The important difference is that embeddings compare similarity between vectors. The reranker actually sees both the user's question and each retrieved chunk together. This lets it reason about relevance instead of simply comparing mathematical distance between embeddings.
+
+## Why I used GPT instead of a dedicated reranker
+
+When I started reading about re-ranking, almost every article mentioned specialised models like Cohere Rerank or cross-encoders. They're built specifically for ranking search results and they're generally faster and cheaper. 
+
+The main reason I chose GPT over a dedicated re-ranking model was to avoid introducing another dependency into the project. I'm already using OpenAI for embeddings and answer generation, so using it for re-ranking meant there was very little extra code to write and nothing new to maintain.
+
+This approach is a bit costly but at my scale it's basically nothing. Before re-ranking, my AI assistant cost roughly $0.01 every two weeks to run. After adding re-ranking it's increased to around $0.016 every two weeks. Even though the per-query cost increases by around 60%, the absolute numbers are so small that it isn't something I'm worried about. I could increase my query volume tenfold and still spend less than a dollar per year.
+
+If this project ever took off though, I'd probably look at dedicated re-ranking models or cross-encoders. For now though, keeping the architecture simple is more valuable than saving a fraction of a cent on each request.
+
+## Problems I ran into
+
+### Sending full chunks would be expensive
+
+My first thought was to send every retrieved chunk to GPT and let it decide the ranking. While that would have worked, it also would have been unnecessarily expensive. Instead, I send a compact representation containing the title, heading, and a short preview, which gives GPT enough context to rank the chunks while keeping token usage low.
+
+### Defensive fallbacks
+
+If re-ranking fails for any reason, I don't want the entire assistant to stop working. Instead, it simply falls back to the original hybrid search order, meaning users still receive an answer without the additional ranking step. It's a small addition, but I think software should always degrade gracefully where possible.
+
+## Streaming the response
+
+Since re-ranking adds another LLM call, I also wanted to improve the user experience. Previously the AI assistant would just sit there for a couple of seconds before suddenly displaying the entire answer all at once. It worked, but it felt a little unresponsive. When I was testing it out, I wasn't sure if my VSCode had crashed. 
+
+The assistant now streams responses word by word, similar to ChatGPT. While the retrieval pipeline is running, the interface also displays progress updates like "Searching blog posts...", "Analyzing relevance...", and "Generating answer...".
+
+The actual response time hasn't really changed, but it definitely feels faster because users can see the system doing something instead of wondering whether their browser froze or not.
+
+## Results
+
+The biggest improvement I found was that that the best chunks consistently appeared first. Questions which previously produced decent answers now tend to produce better ones because the most relevant context reaches the final prompt. This is especially noticeable for queries where several similar chunks are retrieved, but only one of them properly answers the question.
+
+## Future improvements
+
+This is probably the retrieval pipeline I'll stick with for a little while, but there are still plenty of things I'd like to experiment with.
+
+One idea is query rewriting. Rather than searching exactly what the user typed, I could first rewrite vague questions into something more descriptive before retrieval even begins.
+
+I'm also interested in conditional re-ranking. Instead of re-ranking every query, I could only perform it when hybrid search has low confidence. That would reduce both cost and latency while still improving difficult searches.
+
+Finally, I want to continue expanding my evaluation suite. Every improvement I've made so far has been guided by retrieval quality, and I'd like to properly measure whether re-ranking is actually improving my assistant rather than simply feeling better.
+
+<div className="not-prose">
+  <img
+    src="/meow/S29.png"
+    alt="my cat"
+    className="mx-auto block w-70"
+    style={{ height: "auto" }}
+  />
+</div>

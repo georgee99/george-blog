@@ -208,5 +208,240 @@
     "question": "hybrid search",
     "expectedSlugs": ["adding-hybrid-search-rag"],
     "notes": "Keyword search: RAG improvement technique"
+  },
+  {
+    "question": "What common authentication mistakes should I avoid?",
+    "expectedSlugs": ["authentication-mistakes-i-keep-seeing"],
+    "notes": "Security best practices post"
+  },
+  {
+    "question": "What are your favorite The Office episodes?",
+    "expectedSlugs": ["the-office-episodes-ranked"],
+    "notes": "TV show ranking"
+  },
+  {
+    "question": "Where should I get ramen in Sydney?",
+    "expectedSlugs": ["sydney-ramen-tier-list"],
+    "notes": "Food/location-specific tier list"
+  },
+  {
+    "question": "How do you rank superheroes?",
+    "expectedSlugs": ["superhero-ranking"],
+    "notes": "Entertainment ranking"
+  },
+  {
+    "question": "What is reranking in RAG?",
+    "expectedSlugs": ["adding-reranking-rag"],
+    "notes": "RAG technique explanation"
+  },
+  {
+    "question": "What are good investments you've made?",
+    "expectedSlugs": ["my-best-investments"],
+    "notes": "Personal finance/lifestyle post"
+  },
+  {
+    "question": "What should I do when bored at work?",
+    "expectedSlugs": ["things-to-do-when-bored-at-work"],
+    "notes": "Workplace productivity advice"
+  },
+  {
+    "question": "How do you stay up to date with AI?",
+    "expectedSlugs": ["staying-up-ai"],
+    "notes": "Learning/career development in AI"
+  },
+  {
+    "question": "Tell me about your life",
+    "expectedSlugs": ["my-life"],
+    "notes": "Personal/biographical post"
+  },
+  {
+    "question": "How do algorithms relate to invoice approvals?",
+    "expectedSlugs": ["algorithms-to-invoice-approvals"],
+    "notes": "Technical concept application"
+  },
+  {
+    "question": "What did you think of Ghost of Yotei?",
+    "expectedSlugs": ["game-review-ghost-of-yotei"],
+    "notes": "Specific game review - sequel/related to Ghost of Tsushima"
+  },
+  {
+    "question": "Tell me about software engineering in general",
+    "expectedSlugs": ["software-eng"],
+    "notes": "General topic post"
+  },
+  {
+    "question": "What were the worst cloud outages?",
+    "expectedSlugs": ["worst-cloud-outages-last-10-years"],
+    "notes": "Historical/analytical post"
+  },
+  {
+    "question": "What is a different list?",
+    "expectedSlugs": ["a-different-list"],
+    "notes": "Generic title - tests slug matching"
+  },
+  {
+    "question": "authentication security",
+    "expectedSlugs": ["authentication-mistakes-i-keep-seeing"],
+    "notes": "Keyword search: security domain"
+  },
+  {
+    "question": "Ghost of Tsushima sequel",
+    "expectedSlugs": ["game-review-ghost-of-yotei"],
+    "notes": "Synonym/related term search"
+  },
+  {
+    "question": "ramen Sydney",
+    "expectedSlugs": ["sydney-ramen-tier-list"],
+    "notes": "Keyword search: food + location"
+  },
+  {
+    "question": "The Office",
+    "expectedSlugs": ["the-office-episodes-ranked"],
+    "notes": "Keyword search: TV show"
+  },
+  {
+    "question": "What game reviews have you written?",
+    "expectedSlugs": ["game-review-ghost-of-tsushima", "game-review-ghost-of-yotei", "game-review-spiderman-2"],
+    "notes": "Category-based multi-post retrieval"
+  },
+  {
+    "question": "What tier lists have you created?",
+    "expectedSlugs": ["anitas-gelato-tier-list", "coffee-shops-tier-list", "chess-openings-tier-list", "sydney-ramen-tier-list", "dev-tools-ranked"],
+    "notes": "Format-based multi-post retrieval - tests broad categorization"
+  },
+  {
+    "question": "What product reviews do you have?",
+    "expectedSlugs": ["wobkey-rainy-75-review", "mx-master-3s-review", "bose-qc-35ii-review", "hamilton-khaki-field", "swatch-clearly-gent", "casio-mtp-moonphase", "first-watch"],
+    "notes": "Category-based multi-post retrieval - hardware/product focus"
+  },
+  {
+    "question": "What have you written about RAG systems?",
+    "expectedSlugs": ["adding-rag-search-to-my-blog", "adding-rag-evals", "adding-hybrid-search-rag", "adding-reranking-rag", "heading-aware-chunking-rag"],
+    "notes": "Topic cluster - all RAG-related posts"
+  },
+  {
+    "question": "keyboard recommendation",
+    "expectedSlugs": ["wobkey-rainy-75-review"],
+    "notes": "Synonym test: 'recommendation' vs 'review'"
+  },
+  {
+    "question": "headphone suggestions",
+    "expectedSlugs": ["bose-qc-35ii-review"],
+    "notes": "Synonym test: 'suggestions' vs 'review'"
+  },
+  {
+    "question": "career advice software engineering",
+    "expectedSlugs": ["evolution-of-software-engineer", "software-engineer-to-ai-engineer"],
+    "notes": "Broad topic with multiple relevant posts"
+  },
+  {
+    "question": "chess strategies and tactics",
+    "expectedSlugs": ["chess-openings-tier-list", "chess-blitz-hell"],
+    "notes": "Related topic search - synonym variation"
+  },
+  {
+    "question": "startup culture",
+    "expectedSlugs": ["startup-vs-large-company"],
+    "notes": "Partial topic match - tests semantic understanding"
+  },
+  {
+    "question": "database preferences",
+    "expectedSlugs": ["why-i-prefer-nosql-over-sql"],
+    "notes": "Synonym test: 'preferences' vs 'prefer'"
+  },
+  {
+    "question": "What do you think about React?",
+    "expectedSlugs": [],
+    "notes": "NEGATIVE CASE: Topic not covered in blog - SHOULD RETURN EMPTY (tests precision)"
+  },
+  {
+    "question": "How do I cook pasta?",
+    "expectedSlugs": [],
+    "notes": "NEGATIVE CASE: Unrelated topic - SHOULD RETURN EMPTY (tests false positive prevention)"
+  },
+  {
+    "question": "Python vs JavaScript",
+    "expectedSlugs": [],
+    "notes": "NEGATIVE CASE: Programming languages comparison not written about - SHOULD RETURN EMPTY"
+  },
+  {
+    "question": "What is your favorite color?",
+    "expectedSlugs": [],
+    "notes": "NEGATIVE CASE: Personal preference not in blog content - SHOULD RETURN EMPTY"
+  },
+  {
+    "question": "",
+    "expectedSlugs": [],
+    "notes": "EDGE CASE: Empty query - SHOULD RETURN EMPTY or handle gracefully"
+  },
+  {
+    "question": "a",
+    "expectedSlugs": [],
+    "notes": "EDGE CASE: Single character - SHOULD RETURN EMPTY (should not return all posts)"
+  },
+  {
+    "question": "the",
+    "expectedSlugs": [],
+    "notes": "EDGE CASE: Common stop word - SHOULD RETURN EMPTY (should filter or return empty)"
+  },
+  {
+    "question": "What is the meaning of life, universe, and everything, and how does software engineering relate to personal growth, career development, and technical expertise in modern cloud computing environments?",
+    "expectedSlugs": ["evolution-of-software-engineer", "software-engineer-to-ai-engineer"],
+    "notes": "EDGE CASE: Very long query - tests chunking and key term extraction"
+  },
+  {
+    "question": "keybord review",
+    "expectedSlugs": ["wobkey-rainy-75-review"],
+    "notes": "TYPO TEST: Misspelled 'keyboard' - tests fuzzy matching"
+  },
+  {
+    "question": "nosql databse",
+    "expectedSlugs": ["why-i-prefer-nosql-over-sql"],
+    "notes": "TYPO TEST: Misspelled 'database' - tests robustness"
+  },
+  {
+    "question": "authentification",
+    "expectedSlugs": ["authentication-mistakes-i-keep-seeing"],
+    "notes": "TYPO TEST: Common misspelling of authentication"
+  },
+  {
+    "question": "What watch should I buy and what keyboard do you use?",
+    "expectedSlugs": ["hamilton-khaki-field", "swatch-clearly-gent", "first-watch", "wobkey-rainy-75-review"],
+    "notes": "MULTI-INTENT: Two separate questions in one query"
+  },
+  {
+    "question": "coffee",
+    "expectedSlugs": ["coffee-shops-tier-list", "guide-to-coffee-ranked"],
+    "notes": "AMBIGUOUS: Single word with multiple relevant posts"
+  },
+  {
+    "question": "Ghost",
+    "expectedSlugs": ["game-review-ghost-of-tsushima", "game-review-ghost-of-yotei"],
+    "notes": "AMBIGUOUS: Partial title match - should return both Ghost games"
+  },
+  {
+    "question": "watch",
+    "expectedSlugs": ["hamilton-khaki-field", "swatch-clearly-gent", "casio-mtp-moonphase", "first-watch"],
+    "notes": "AMBIGUOUS: Generic term with multiple specific posts"
+  },
+  {
+    "question": "What should I NOT do when building APIs?",
+    "expectedSlugs": ["hidden-complexity-api-endpoint"],
+    "notes": "NEGATION IN QUERY: Tests understanding of 'what not to do'"
+  },
+  {
+    "question": "avoiding mistakes in production",
+    "expectedSlugs": ["breaking-production"],
+    "notes": "INTENT MATCHING: Implicit request for cautionary tales"
+  },
+  {
+    "question": "How to improve search relevance?",
+    "expectedSlugs": ["adding-rag-search-to-my-blog", "adding-hybrid-search-rag", "adding-reranking-rag"],
+    "notes": "TECHNICAL DEPTH: Tests retrieval of progressive improvement posts"
+  },
+  {
+    "question": "melbourne australia wandering",
+    "expectedSlugs": ["why-melbourne-feels-built-for-wandering"],
+    "notes": "MULTI-KEYWORD: Tests combination of location + activity"
   }
 ]
