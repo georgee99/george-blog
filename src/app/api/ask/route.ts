@@ -19,6 +19,12 @@ const RATE_LIMIT_MAX = 10
 const SEMANTIC_WEIGHT = 0.80
 const KEYWORD_WEIGHT = 0.20
 
+// Re-ranking config
+const ENABLE_RERANK = process.env.ENABLE_RERANK === 'true' || true
+const RERANK_MODEL = 'gpt-4o-mini'
+const RERANK_CANDIDATES = 15 // Retrieve more candidates for re-ranking
+const RERANK_MAX_TOKENS = 300 // Limit output tokens for re-ranking
+
 // In-memory keyword index cache
 let keywordIndex: MiniSearch<Chunk> | null = null
 let lastEmbeddingsModified: number = 0
@@ -141,7 +147,89 @@ function ensureKeywordIndex(chunks: Chunk[]): MiniSearch<Chunk> {
   return keywordIndex
 }
 
-function selectChunks(query: string, queryEmbedding: number[], chunks: Chunk[]): Chunk[] {
+async function rerankChunks(
+  query: string,
+  candidates: Chunk[],
+  client: OpenAI
+): Promise<Chunk[]> {
+  if (candidates.length === 0) return []
+
+  // Create compact representations of chunks for re-ranking
+  const chunkDescriptions = candidates.map((c, idx) => {
+    const preview = c.text.slice(0, 150).replace(/\n/g, ' ')
+    return `[${idx}] Title: ${c.title}${c.heading ? ` | Section: ${c.heading}` : ''}\nPreview: ${preview}...`
+  }).join('\n\n')
+
+  const rerankPrompt = `You are a relevance ranking system. Given a user query and a list of blog post chunks, rank them by how well they answer the query.
+
+User Query: "${query}"
+
+Chunks:
+${chunkDescriptions}
+
+Rank these chunks from most to least relevant for answering the query. Return ONLY a JSON array of chunk indices in ranked order, like: [2, 0, 5, 1, 3, 4]
+
+Ranked indices:`
+
+  try {
+    const response = await client.chat.completions.create({
+      model: RERANK_MODEL,
+      temperature: 0,
+      max_tokens: RERANK_MAX_TOKENS,
+      messages: [
+        { role: 'system', content: 'You are a precise ranking system. Return only valid JSON arrays of integers.' },
+        { role: 'user', content: rerankPrompt }
+      ]
+    })
+
+    const content = response.choices[0]?.message?.content?.trim() ?? ''
+    
+    // Extract JSON array from response
+    const match = content.match(/\[(\d+(?:,\s*\d+)*)\]/)
+    if (!match) {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[ask] Re-ranking failed: invalid response format, falling back to original order')
+      }
+      return candidates
+    }
+
+    const rankedIndices = JSON.parse(match[0]) as number[]
+    
+    // Validate indices
+    const validIndices = rankedIndices.filter(idx => idx >= 0 && idx < candidates.length)
+    if (validIndices.length === 0) {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[ask] Re-ranking failed: no valid indices, falling back to original order')
+      }
+      return candidates
+    }
+
+    // Reorder chunks based on ranking
+    const reranked = validIndices.map(idx => candidates[idx])
+    
+    // Add any chunks that weren't ranked (shouldn't happen, but defensive)
+    const rankedSet = new Set(validIndices)
+    const unranked = candidates.filter((_, idx) => !rankedSet.has(idx))
+    
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[ask] Re-ranked order:', reranked.map(c => c.slug).slice(0, 5).join(', '))
+    }
+
+    return [...reranked, ...unranked]
+  } catch (error) {
+    if (process.env.NODE_ENV === 'development') {
+      console.error('[ask] Re-ranking error:', error)
+    }
+    return candidates // Fallback to original order on error
+  }
+}
+
+async function selectChunks(
+  query: string,
+  queryEmbedding: number[],
+  chunks: Chunk[],
+  client: OpenAI
+): Promise<Chunk[]> {
   const queryTags = extractQueryTags(query)
 
   // Semantic/vector search 
@@ -257,20 +345,30 @@ function selectChunks(query: string, queryEmbedding: number[], chunks: Chunk[]):
 
   // Deduplication and filtering
   const seenSlugs = new Set<string>()
+  const candidateCount = ENABLE_RERANK ? RERANK_CANDIDATES : TOP_K
   const deduplicated = hybridScored.filter(r => {
     // For hybrid, apply a lower threshold since scores are normalized differently
     if (r.score < 0.1) return false
     if (seenSlugs.has(r.chunk.slug)) return false
     seenSlugs.add(r.chunk.slug)
     return true
-  }).slice(0, TOP_K)
+  }).slice(0, candidateCount)
 
-  // TOKEN-BUDGET SELECTION 
+  // RE-RANKING (if enabled)
+  let finalCandidates = deduplicated.map(r => r.chunk)
+  if (ENABLE_RERANK && finalCandidates.length > TOP_K) {
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[ask] Re-ranking ${finalCandidates.length} candidates...`)
+    }
+    finalCandidates = await rerankChunks(query, finalCandidates, client)
+  }
+
+  // TOKEN-BUDGET SELECTION
   const selected: Chunk[] = []
   let used = 0
   const systemTokens = estimateTokens(buildSystemPrompt())
 
-  for (const { chunk } of deduplicated) {
+  for (const chunk of finalCandidates) {
     const chunkTokens = chunk.tokenEstimate ?? estimateTokens(chunk.text)
     // Always include at least 1 chunk even if it exceeds the cap
     if (selected.length > 0 && used + chunkTokens + systemTokens > CONTEXT_TOKEN_CAP) break
@@ -358,43 +456,94 @@ export async function POST(req: NextRequest) {
 
   const client = new OpenAI({ apiKey })
 
-  // Embed the question
-  const embeddingRes = await client.embeddings.create({
-    model: EMBEDDING_MODEL,
-    input: sanitized,
+  // Create streaming response
+  const encoder = new TextEncoder()
+  const stream = new ReadableStream({
+    async start(controller) {
+      try {
+        // Helper to send progress updates
+        const sendProgress = (message: string) => {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'progress', message })}\n\n`))
+        }
+
+        // Helper to send content chunks
+        const sendContent = (content: string) => {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'content', content })}\n\n`))
+        }
+
+        // Embedding
+        sendProgress('Searching blog posts...')
+        const embeddingRes = await client.embeddings.create({
+          model: EMBEDDING_MODEL,
+          input: sanitized,
+        })
+        const queryEmbedding = embeddingRes.data[0].embedding
+
+        // Re-ranking
+        if (ENABLE_RERANK) {
+          sendProgress('Analyzing relevance...')
+        }
+        
+        const selectedChunks = await selectChunks(sanitized, queryEmbedding, store.chunks, client)
+
+        if (process.env.NODE_ENV === 'development') {
+          console.log('[ask] selected chunks:', selectedChunks.map(c => `${c.id} (${c.tokenEstimate} tokens)`))
+          console.log('[ask] user prompt preview:', buildUserPrompt(sanitized, selectedChunks).slice(0, 300))
+        }
+
+        if (selectedChunks.length === 0) {
+          sendContent("I don't have that in my posts.")
+          controller.close()
+          return
+        }
+
+        // Generate answer
+        sendProgress('Generating answer...')
+        
+        const systemPrompt = buildSystemPrompt()
+        if (process.env.NODE_ENV === 'development') {
+          console.log('[ask] system prompt length:', systemPrompt.length)
+          console.log('[ask] system prompt tail:', JSON.stringify(systemPrompt.slice(-80)))
+        }
+
+        const chatStream = await client.chat.completions.create({
+          model: CHAT_MODEL,
+          temperature: TEMPERATURE,
+          max_tokens: RESPONSE_MAX_TOKENS,
+          stream: true,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: buildUserPrompt(sanitized, selectedChunks) },
+          ],
+        })
+
+        // Stream the response
+        for await (const chunk of chatStream) {
+          const content = chunk.choices[0]?.delta?.content
+          if (content) {
+            sendContent(content)
+          }
+        }
+
+        // Signal completion
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'done' })}\n\n`))
+        controller.close()
+      } catch (error) {
+        console.error('[ask] streaming error:', error)
+        const errorMessage = error instanceof Error ? error.message : 'An error occurred'
+        controller.enqueue(
+          encoder.encode(`data: ${JSON.stringify({ type: 'error', error: errorMessage })}\n\n`)
+        )
+        controller.close()
+      }
+    },
   })
-  const queryEmbedding = embeddingRes.data[0].embedding
 
-  // Retrieve relevant chunks
-  const selectedChunks = selectChunks(sanitized, queryEmbedding, store.chunks)
-
-  if (process.env.NODE_ENV === 'development') {
-    console.log('[ask] selected chunks:', selectedChunks.map(c => `${c.id} (${c.tokenEstimate} tokens)`))
-    console.log('[ask] user prompt preview:', buildUserPrompt(sanitized, selectedChunks).slice(0, 300))
-  }
-
-  if (selectedChunks.length === 0) {
-    return NextResponse.json({ answer: "I don't have that in my posts." })
-  }
-
-  // Call chat model
-  const systemPrompt = buildSystemPrompt()
-  if (process.env.NODE_ENV === 'development') {
-    console.log('[ask] system prompt length:', systemPrompt.length)
-    console.log('[ask] system prompt tail:', JSON.stringify(systemPrompt.slice(-80)))
-  }
-
-  const chatRes = await client.chat.completions.create({
-    model: CHAT_MODEL,
-    temperature: TEMPERATURE,
-    max_tokens: RESPONSE_MAX_TOKENS,
-    messages: [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: buildUserPrompt(sanitized, selectedChunks) },
-    ],
+  return new Response(stream, {
+    headers: {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+    },
   })
-
-  const answer = chatRes.choices[0]?.message?.content?.trim() ?? "I don't have that in my posts."
-
-  return NextResponse.json({ answer })
 }

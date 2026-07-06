@@ -7,6 +7,7 @@ export default function AskPage() {
   const [answer, setAnswer] = useState<string | null>(null)
   const [sources, setSources] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
+  const [progress, setProgress] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
@@ -19,6 +20,7 @@ export default function AskPage() {
     setAnswer(null)
     setSources([])
     setError(null)
+    setProgress(null)
 
     try {
       const res = await fetch('/api/ask', {
@@ -27,29 +29,91 @@ export default function AskPage() {
         body: JSON.stringify({ question: q }),
       })
 
-      const data = (await res.json()) as { answer?: string; error?: string }
-      console.log('[ask] response:', data)
+      if (!res.ok) {
+        // Try to parse error from JSON
+        try {
+          const data = await res.json() as { error?: string }
+          setError(data.error ?? 'Something went wrong.')
+        } catch {
+          setError('Something went wrong.')
+        }
+        setLoading(false)
+        return
+      }
 
-      if (!res.ok || data.error) {
-        setError(data.error ?? 'Something went wrong.')
-        setSources([])
+      // Check if we're getting a streaming response
+      const contentType = res.headers.get('content-type')
+      if (contentType?.includes('text/event-stream')) {
+        // Handle streaming response
+        const reader = res.body?.getReader()
+        const decoder = new TextDecoder()
+        let accumulatedAnswer = ''
+
+        if (!reader) {
+          setError('Failed to read response stream.')
+          setLoading(false)
+          return
+        }
+
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+
+          const chunk = decoder.decode(value, { stream: true })
+          const lines = chunk.split('\n')
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const data = JSON.parse(line.slice(6)) as
+                | { type: 'progress'; message: string }
+                | { type: 'content'; content: string }
+                | { type: 'error'; error: string }
+                | { type: 'done' }
+
+              if (data.type === 'progress') {
+                setProgress(data.message)
+              } else if (data.type === 'content') {
+                accumulatedAnswer += data.content
+                setAnswer(accumulatedAnswer)
+                setProgress(null) // Clear progress when content starts
+              } else if (data.type === 'error') {
+                setError(data.error)
+                setLoading(false)
+                return
+              } else if (data.type === 'done') {
+                // Extract sources from accumulated answer
+                const urls = extractUrls(accumulatedAnswer)
+                const cleaned = stripSourcesSection(accumulatedAnswer)
+                setAnswer(cleaned)
+                setSources(urls)
+                setProgress(null)
+              }
+            }
+          }
+        }
       } else {
-        const a = data.answer ?? null
-        if (a) {
-          const urls = extractUrls(a)
-          const cleaned = stripSourcesSection(a)
-          setAnswer(cleaned)
-          setSources(urls)
+        // Fallback to old JSON response (shouldn't happen, but defensive)
+        const data = (await res.json()) as { answer?: string; error?: string }
+        console.log('[ask] response:', data)
+
+        if (data.error) {
+          setError(data.error)
         } else {
-          setAnswer(null)
-          setSources([])
+          const a = data.answer ?? null
+          if (a) {
+            const urls = extractUrls(a)
+            const cleaned = stripSourcesSection(a)
+            setAnswer(cleaned)
+            setSources(urls)
+          }
         }
       }
-    } catch {
+    } catch (err) {
+      console.error('[ask] error:', err)
       setError('Failed to reach the server.')
-      setSources([])
     } finally {
       setLoading(false)
+      setProgress(null)
     }
   }
 
@@ -140,6 +204,15 @@ export default function AskPage() {
               </button>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Progress indicator */}
+      {progress && (
+        <div className="space-y-2">
+          <p className="text-sm text-neutral-600 dark:text-neutral-400 animate-pulse">
+            {progress}
+          </p>
         </div>
       )}
 
