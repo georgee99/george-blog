@@ -1,0 +1,52 @@
+---
+title: The engineering behind Spotify shuffle 
+date: 2026-07-10
+description: How Spotify shuffle works under the hood
+published: true
+tags: ["tech", "code"]
+---
+
+Every now and then I come across something which makes me think about how it was engineered. It might not necessarily be complicated, but the solution ends up being completely different from what I expected. Spotify's shuffle algorithm is one of these examples.
+
+For ages I noticed that Spotify's shuffle wasn't random enough and that I'd occassionally get songs from the same artist too often, albums would stay together, and it was like Spotify was replaying the same handful of tracks. I always assumed there was some clever recommendation system influencing the shuffle behind the scenes. I googled it the other day and found an article by the Spotify Engineering team: [Shuffle: Making Random Feel More Human](https://engineering.atspotify.com/2025/11/shuffle-making-random-feel-more-human). After reading it, I realised the problem was way more interesting than I thought. The challenge wasn't making shuffle random, but making it feel random instead.
+
+## The original shuffle
+
+According to Spotify Engineering, the original implementation was pretty much what most devs would've built. Every song in the playlist was assigned a random value using the Mersenne Twister pseudorandom number generator before the playlist was sorted using those values. It meant every possible ordering of the playlist had an equal chance of occurring, making the algorithm mathematically fair.
+
+From an engineering perspective, there's not too much wrong with it. It's both simple and fast. It's probably how I'd build it too if I wasn't thinking about user perception. The problem with it wasn't mathematical, but rather with human experience and our pereception of randomness.
+
+## Recognising randomness
+
+In the article they mention flipping a fair coin. Most of the time, people expect a random sequence to alternate fairly between heads or tails, but in reality, long runs of the same result happen often more than people expect. It looks suspicious when 5 heads in a row happen, but it's still a valid outcome.
+
+The same thing happens with playlists. If several songs from the same artist happen to be close together, most listeners immediately assume something has gone wrong even though statistically there's nothing wrong with that ordering. This is one of those situations where math and psychology aren't aligned with each other. Users aren't actually asking for mathematically perfect randomness, but rather something that just felt random.
+
+## Making shuffle feel more human
+
+Rather than trying to convince millions of users that the original algorithm was correct, Spotify changed the problem they were solving. Instead of generating a single shuffled playlist, they generated multiple random candidates before scoring each one using what they referred to as a "freshness" score. They don't talk about the exact implementation, but they mentioned that factors such as recently played songs, artist repetition, and overall diversity all influence that score. The playlist with the highest freshness score is ultimately selected.
+
+I thought this solution was pretty good because it didn't replace the randomness. Every candidate playlist is still randomly generated. Spotify simply chose the one which best aligns with people's expectation of randomness.
+
+## Could an LLM do this instead?
+
+When I read Spotify's engineering article, it got me thinking about whether an LLM could solve this problem instead. Rather than generating multiple random playlists and scoring them with predefined rules, you could give the LLM the playlist, listening history, and a few constraints such as avoiding recently played artists, reducing album repetition, and spreading genres more eventy throughout the queue. Instead of calculating a freshness score, the model could simply generate the final playlist directly.
+
+This solution would actually work decent. Modern language models are very good at following constraints, balancing objectives, and making judgement calls that traditional algorithms struggle to. If Spotify wanted to experiment with gradually increasing the energy of a workout playlist or spreading genres more evenly, those changes could potentially be achieved through prompt updates rather than modifying a scoring function.
+
+That being said, I don't think I'd build it this way. Shuffle is one of the most heavily used features. Introducing an LLM would add additional latency, infrastructure, and ongoing inference costs to solve a problem that's already handled well by a relatively lightweight algoriothm. Also, after reading a few of Spotify's Engineering AI articles, I noticed they seem to use LLMs where reasoning genuinely adds value like improving developer workflows, and evaluating experiments.
+
+## My take
+
+I think this is a good example of how in some cases the most technically correct solution isn't always the best engineering solution. Spotify could've kept their shuffle mathematically fair, but they changed the algorithm to better match user expectations. This overall was a better decision for the product.
+
+Reading through Spotify's engineering article was also a good reminder that the simplest solution isn't always the one that users experience. Behind a simple shuffle feature is a suprising amount of engineering, psychology, and optimisation. It's one of those features I'll probably never use the same way again.
+
+<div className="not-prose">
+  <img
+    src="/meow/M29.png"
+    alt="My cat"
+    className="mx-auto block w-72"
+    style={{ height: "auto" }}
+  />
+</div>
