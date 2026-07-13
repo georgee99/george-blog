@@ -1,0 +1,84 @@
+---
+title: How MCP Actually Works
+date: 2026-07-13
+description: Understanding the protocol that's changing how AI applications interact with external tools
+published: true
+tags: ["coding", "tech"]
+---
+
+I'd been hearing about MCP everywhere recently. Anthropic created it, OpenAI supports it, and it seems like every AI company is talking about it. I knew it had something to do with connecting AI models to external tools, but beyond that I had no idea how it was different from exposing a REST API.
+
+After spending a while reading the specifications and a bunch of engineering articles, I realised MCP is actually simpler than I expected. It's not trying to replace APIs or introduce another AI framework, but instead it's trying to standardise how AI applications discover and interact with tools.
+
+## Before MCP
+
+Before MCP, every AI integration was effectively built from scratch. If you wanted an LLM to interact with GitHub, Slack, Google Drive and your own application, each integration had its own authentication, request format and implementation. Even if two applications exposed the exact same functionality, the AI client still needed custom code for each one.
+
+From the perspective of the AI application, every tool looked completely different. That works fine when you're integrating one or two services, but it quickly becomes difficult to maintain as more tools are added.
+
+<div className="not-prose">
+  <img
+    src="/inserts/BEFORE_MCP.png"
+    alt="MCP"
+    className="mx-auto mt-2 block w-75"
+    style={{ height: "auto" }}
+  />
+</div>
+
+## The core idea behind MCP
+
+The easiest way I found to think about MCP was as a common language between AI applications and external tools. Instead of teaching every AI client how to communicate with every individual service, the service simply exposes itself as an MCP server. As long as the client understands MCP, it can discover the available tools, understand their inputs and call them without needing a custom integration.
+
+## How MCP actually works
+
+The AI application acts as the MCP client. External applications expose an MCP server, which advertises the tools it provides. When the user asks a question, the model decides whether one of those tools would help answer it. If it does, the client calls the server, executes the tool and returns the result back to the model.
+
+The protocol itself is surprisingly lightweight. Rather than inventing a completely new communication mechanism, MCP uses JSON-RPC to exchange requests and responses. The complexity isn't really in the protocol. It's in the tools you choose to expose.
+
+One analogy which helped me understand it was the restaurant and menu example. Rather than going to a restaurant and telling the chefs in the kitchen exactly how to cook your meal, you'd instead order from a menu. The menu describes everything that's available, and all the information needed to place the order. MCP works in a similar way where the AI model doesn't directly interact with your application, but instead sees a "menu" of tools exposed by the MCP server. The model chooses a tool from that menu, the MCP server exectures it, and the result is returned to the model.
+
+<div className="not-prose">
+  <img
+    src="/inserts/MCP.png"
+    alt="MCP"
+    className="mx-auto mt-2 block w-150"
+    style={{ height: "auto" }}
+  />
+</div>
+
+## Why not just use REST APIs?
+
+Technically you could continue exposing REST APIs. The difference between them is that REST APIs weren't designed specifically for language models. Every integration still requires someone to write custom code that tells the AI what endpoints exist, what parameters they accept, and how to interpret the responses.
+
+MCP standardises that process. Rather than writing a new integration for every application, AI clients can interact with any compliant MCP server using the same protocol. The API still exists underneath, but the way AI applications discover and use it becomes consistent.
+
+One thing I wondered while reading about MCP was what happens if a particular service doesn't expose its own MCP server. Fortunately, that isn't necessarily a blocker. The community has already built MCP servers for many popular services, and there are also more generic servers that expose capabilities rather than specific products. For example, you can find MCP servers for interacting with the local file system, making arbitrary REST API requests, querying databases, or executing shell commands. In many cases, that means you can still integrate with an application even if the company itself hasn't officially adopted MCP.
+
+## Could my blog use MCP?
+
+My blog already exposes its own search endpoint which powers the RAG assistant. The AI retrieves relevant blog posts using hybrid search, optionally reranks the results and then generates a response. None of that logic would really need to change.
+
+Instead, I could expose those capabilities through an MCP server. Rather than calling my custom REST endpoint, an AI client could discover tools such as search_posts, get_post or list_categories automatically. Claude, ChatGPT or any other MCP-compatible client could then interact with my blog without me writing a separate integration for each one.
+
+It's fun to discuss whether current solutions can use newer ones. That being said, I don't think I'd rush to implement this today because my current solution already works well. However, if I wanted my blog to become something other AI applications could query directly, MCP would probably be the approach I'd investigate first.
+
+## Things that surprised me
+
+The biggest surprise was how small the protocol actually is. From the way people talk about MCP, I expected something much larger. Instead, most of the complexity still lives inside the tools themselves.
+
+I was also surprised that MCP isn't trying to replace REST APIs. It's really just defining a standard way for AI applications to discover and use existing capabilities. Once that clicked, the protocol made a lot more sense.
+
+## My take
+
+I can definitely see why MCP has gained so much attention over the past year. It solves a genuine engineering problem without introducing much complexity, and I think that's part of its appeal. Rather than replacing everything that already exists, it builds a common standard on top of it.
+
+Whether MCP becomes the long-term standard is something only time will tell. Even if it doesn't, I think understanding the ideas behind it is worthwhile because AI applications are only going to become more connected to external tools, and protocols like MCP make those integrations much easier to build and maintain.
+
+<div className="not-prose">
+  <img
+    src="/meow/S30.png"
+    alt="My cat"
+    className="mx-auto block w-72"
+    style={{ height: "auto" }}
+  />
+</div>
