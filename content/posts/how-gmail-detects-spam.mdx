@@ -1,0 +1,48 @@
+---
+title: How gmail detects spam
+date: 2026-07-25
+description: Breaking down how Gmail filters billions of emails every day using Google's own engineering articles and documentation.
+published: true
+tags: ["coding", "tech"]
+---
+
+Spam is something most of us don't really think about anymore. Every day we receive emails without giving much thought to the number that never made it to our inbox in the first place. Gmail processes billions of emails every day, quietly deciding which ones deserve our attention and which ones belong in the spam folder. Before looking into how it actually worked, I assumed it mostly came down to looking for suspicious words or malicious links.
+
+After reading through Google's engineering articles and documentation, I realised the system is much more layered than I expected. There isn't one giant spam filter making every decision. Instead, Gmail combines multiple independent systems that all contribute to the final result. In this post I'll break down the main stages Google describes and explain them in the way that made the most sense to me.
+
+## Gmail's spam filter
+
+At a high level, every incoming email passes through several broad stages before it reaches your inbox. Gmail first verifies who sent the email and whether that sender can be trusted. It then analyses the email itself for suspicious characteristics before combining those signals with machine learning models to help make a final decision. The process doesn't stop there either, because Gmail is constantly learning from new threats and user feedback to improve future detections.
+
+One thing that stood out to me was that Gmail doesn't appear to rely on a single signal. Instead, each stage builds confidence by looking at a different part of the problem. Some emails might come from trusted senders but contain suspicious content, while others might look perfectly normal but originate from an unknown or poorly trusted domain. Rather than making an early decision, they combine these signals together before deciding whether an email belongs in your inbox or your spam folder.
+
+## Can Gmail trust the sender
+
+Before Gmail even starts looking at the contents of an email, it first needs to establish whether the sender is genuine or not. This is where technologies like SPF, DKIM and DMARC all come into play. Their purpose here is to help Gmail verify that an email claiming to come from a particular domain was actually authorised by that domain to be sent.
+
+Verification is only one part of the story though. Gmail also keeps track of a sender's reputation over time. Things like previous spam reports, sending behaviour, domain reputation and IP reputation all contribute towards how trustworthy a sender appears. That means two emails containing almost identical content may be treated very differently simply because one sender has built trust over a long period of time while another has not.
+
+## What's inside the email
+
+Once Gmail has established who sent the email, it can begin analysing the email itself. This includes looking at the content, links, attachments, formatting and other characteristics that may indicate spam or phishing. Modern spam filters are much more sophisticated than simply looking for words like "free" or "winner". Instead, Gmail combines many different signals to build an overall picture of how suspicious an email appears.
+
+Machine learning plays a significant role during this stage. Rather than relying entirely on handwritten rules, Google's models learn patterns from enormous amounts of data to help distinguish legitimate emails from malicious ones. These models don't replace the earlier authentication and reputation checks. Instead, they become another source of information that contributes towards the overall decision.
+
+## Staying ahead of spammers
+
+Spam filtering isn't something Google can solve once and then forget about. As detection techniques improve, spammers continually change their tactics in an attempt to bypass them. This creates an ongoing cycle where both sides are constantly adapting. New phishing campaigns, compromised accounts and evolving attack techniques mean yesterday's solution won't necessarily be effective tomorrow.
+
+User feedback also plays an important role in this process. Every time someone clicks "Report spam" or "Not spam", that information helps Google understand whether its systems made the correct decision. Combined with new data and retrained machine learning models, Gmail continues improving its ability to detect unwanted emails. It's less like maintaining a finished product and more like continuously responding to an ever-changing problem.
+
+## My take
+
+The biggest thing I found out was how little the decision depends on any single factor. I expected machine learning to be doing most of the heavy lifting, but authentication, sender reputation and historical behaviour seem just as important. After reading through Google's documentation, it became clear that Gmail's spam filter isn't really one system at all. It's a collection of systems that each solve a different part of the problem, before working together to make a final decision.
+
+<div className="not-prose">
+  <img
+    src="/meow/S31.png"
+    alt="meow"
+    className="mx-auto block w-60"
+    style={{ height: "auto" }}
+  />
+</div>
