@@ -1,0 +1,53 @@
+---
+title: Adding Query Rewriting to my RAG
+date: 2026-07-27
+description: Improving retrieval quality with query rewriting
+published: true
+tags: ["coding","tech"]
+---
+
+When I first added RAG search to my blog, I was impressed by how well embeddings could understand the meaning behind a question. Since then I've gradually improved retrieval by introducing hybrid search and later GPT re-ranking. Each addition solved a different problem, but I still wanted to make it better. One thing which my mate and I noticed after testing it with the most random prompts was that the quality of retrieval still depended heavily on how the user phrased their question.
+
+Most people don't naturally write search-optimised queries. They use abbreviations, omit context, or ask conversational questions because that's how we normally communicate. While embeddings are good at understanding semantics, they can only work with the text they're given. That led me to another common technique used in production RAG systems called query rewriting.
+
+## Why query rewriting
+
+Query rewriting is a preprocessing step that rewrites a user's query before any retrieval takes place. Instead of searching using exactly what the user typed, the system  produces a version that is better suited for semantic retrieval while preserving the original intent. The goal isn't to change the user's question, but to make it easier for the retrieval system to understand.
+
+For example, someone might search for "how does RAG work". To a human it's obvious that RAG refers to Retrieval Augmented Generation (engineers, not all humans), but that abbreviation may not produce the strongest embedding on its own. Similarly, users often ask vague or conversational questions that are perfectly understandable to another person but contain less semantic information than they could. Improving the query before generating an embedding gives the retrieval pipeline a better starting point.
+
+## My implementation
+
+After sanitising the user's input, I now send the query to GPT-4o Mini before generating an embedding. Rather than asking the model to answer the question, its only responsibility is to rewrite the query for retrieval. The rewritten query then becomes the input for embeddings, hybrid search and GPT re-ranking, while the original user question is still used when generating the final response. This means retrieval becomes smarter without changing what the assistant ultimately answers.
+
+<div className="not-prose">
+  <img
+    src="/inserts/QUERY_REWRITE_FLOW.png"
+    alt="solid meme"
+    className="mx-auto mt-2 block w-150"
+    style={{ height: "auto" }}
+  />
+</div>
+
+I also took the opportunity to extract category tags during the same request. The model returns both a rewritten query and a list of tags chosen from a strict whitelist matching my blog categories. Those tags are merged with my existing regex-based extraction before retrieval, allowing matching chunks to receive a small score boost while avoiding unrelated categories. Since the same model call already exists, extracting tags came at almost no additional cost.
+
+## Keeping rewrites conservative
+
+One thing I wanted to avoid was rewriting every query just because I could. Many examples online aggressively expand queries by adding extra keywords and assumptions, but I found that most of the time this often changes the original meaning or introduces concepts the user never intended.
+
+Queries that are already clear are left unchanged. Abbreviations are only expanded when their meaning is obvious, ambiguous pronouns are only resolved when there is enough context, and the model is explicitly instructed not to invent products, technologies or opinions. If the rewriting step fails for any reason, the system simply falls back to the original query, so retrieval continues as normal.
+
+## My take
+
+Adding query rewriting has been another example of how RAG systems improve through lots of small refinements rather than one large breakthrough. Hybrid search improved how results were retrieved, GPT re-ranking improved how they were ordered, and query rewriting improves the input before retrieval even begins. Each stage solves a different problem, but together they produce much better results than any one technique on its own.
+
+I also found it interesting that one of the biggest improvements to the RAG wasn't changing anything with the retrieval, but instead from recognising that users rarely phrase questions in the most useful way for an AI search system. By spending a small amount of time improving the query first, the rest of the pipeline has a much better chance of retrieving the information the user was actually looking for.
+
+<div className="not-prose">
+  <img
+    src="/meow/M31.png"
+    alt="My cat"
+    className="mx-auto block w-70"
+    style={{ height: "auto" }}
+  />
+</div>
