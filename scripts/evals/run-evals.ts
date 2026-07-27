@@ -81,14 +81,18 @@ function extractQueryTags(question: string): Set<string> {
   const tags = new Set<string>()
   
   // Extract meaningful tag signals from query
-  if (q.match(/\bmovies?\b|\bfilms?\b|\bcinema\b/)) tags.add('movie')
-  if (q.match(/\btv\b|\bepisodes?\b|\bseries\b|\bsitcom\b/)) tags.add('tv')
-  if (q.match(/\bgames?\b|\bgaming\b/)) tags.add('game')
-  if (q.match(/\bmusic\b|\balbums?\b|\bsongs?\b/)) tags.add('music')
-  if (q.match(/\bwatchs?\b|\bwatches\b/)) tags.add('watch')
+  if (q.match(/\bchess\b/)) tags.add('chess')
+  if (q.match(/\bcod(e|ing)\b|\bsoftware\b|\bprogramming\b|\bdev\b/)) tags.add('coding')
   if (q.match(/\bcoffee\b/)) tags.add('coffee')
-  if (q.match(/\bfood\b|\bgelato\b/)) tags.add('food')
-  if (q.match(/\btech\b|\bsoftware\b|\bcode\b|\bdev\b/)) tags.add('tech')
+  if (q.match(/\bfood\b|\bgelato\b|\bramen\b|\brestaurant\b/)) tags.add('food')
+  if (q.match(/\bgames?\b|\bgaming\b/)) tags.add('games')
+  if (q.match(/\bmovies?\b|\bfilms?\b|\bcinema\b/)) tags.add('movie')
+  if (q.match(/\bmusic\b|\balbums?\b|\bsongs?\b/)) tags.add('music')
+  if (q.match(/\branking\b|\branked\b|\btier list\b/)) tags.add('ranking')
+  if (q.match(/\breview\b|\bopinion\b/)) tags.add('review')
+  if (q.match(/\btech\b|\btechnology\b/)) tags.add('tech')
+  if (q.match(/\bwatchs?\b|\bwatches\b|\btimepiece\b/)) tags.add('watches')
+  if (q.match(/\bwork\b|\bjob\b|\bcareer\b|\bcompany\b/)) tags.add('work')
   
   return tags
 }
@@ -125,7 +129,7 @@ function selectChunks(query: string, queryEmbedding: number[], chunks: Chunk[]):
         adjustedScore += 0.10
       } else {
         // Penalize conflicting media types
-        const mediaTypes = new Set(['movie', 'tv', 'game'])
+        const mediaTypes = new Set(['movie', 'games', 'music'])
         const queryMedia = Array.from(queryTags).filter(t => mediaTypes.has(t))
         const chunkMedia = Array.from(chunkTags).filter(t => mediaTypes.has(t))
         
@@ -246,6 +250,7 @@ interface CaseResult {
   retrievedSlugs: string[]
   hit: boolean // all expected slugs retrieved
   partialHit: boolean // at least one expected slug retrieved
+  isSmokeTest: boolean // no expected slugs (testing edge cases)
   notes?: string
 }
 
@@ -254,14 +259,16 @@ function scoreCase(
   retrieved: Chunk[],
 ): CaseResult {
   const retrievedSlugs = retrieved.map(c => c.slug)
-  const hit = evalCase.expectedSlugs.every(s => retrievedSlugs.includes(s))
-  const partialHit = evalCase.expectedSlugs.some(s => retrievedSlugs.includes(s))
+  const isSmokeTest = evalCase.expectedSlugs.length === 0
+  const hit = !isSmokeTest && evalCase.expectedSlugs.every(s => retrievedSlugs.includes(s))
+  const partialHit = !isSmokeTest && evalCase.expectedSlugs.some(s => retrievedSlugs.includes(s))
   return {
     question: evalCase.question,
     expectedSlugs: evalCase.expectedSlugs,
     retrievedSlugs,
     hit,
     partialHit,
+    isSmokeTest,
     notes: evalCase.notes,
   }
 }
@@ -275,6 +282,17 @@ const BOLD = '\x1b[1m'
 const DIM = '\x1b[2m'
 
 function fmt(result: CaseResult, index: number): string {
+  if (result.isSmokeTest) {
+    const icon = `${DIM}○${RESET}`
+    const label = 'SMOKE TEST'
+    const lines = [
+      `${icon} ${BOLD}[${index + 1}] ${result.question || '(empty query)'}${RESET}  ${DIM}${label}${RESET}`,
+      `   ${DIM}retrieved: ${result.retrievedSlugs.length ? result.retrievedSlugs.join(', ') : '(none)'}${RESET}`,
+    ]
+    if (result.notes) lines.push(`   ${DIM}note: ${result.notes}${RESET}`)
+    return lines.join('\n')
+  }
+
   const icon = result.hit ? `${GREEN}✓${RESET}` : result.partialHit ? `${YELLOW}~${RESET}` : `${RED}✗${RESET}`
   const label = result.hit ? 'PASS' : result.partialHit ? 'PARTIAL' : 'FAIL'
   const colour = result.hit ? GREEN : result.partialHit ? YELLOW : RED
@@ -342,22 +360,27 @@ async function main() {
   results.forEach((r, i) => console.log(fmt(r, i) + '\n'))
 
   // Summary
-  const total = results.length
-  const passed = results.filter(r => r.hit).length
-  const partial = results.filter(r => !r.hit && r.partialHit).length
-  const failed = results.filter(r => !r.partialHit).length
-  const pct = Math.round((passed / total) * 100)
+  const smokeTests = results.filter(r => r.isSmokeTest)
+  const realTests = results.filter(r => !r.isSmokeTest)
+  const total = realTests.length
+  const passed = realTests.filter(r => r.hit).length
+  const partial = realTests.filter(r => !r.hit && r.partialHit).length
+  const failed = realTests.filter(r => !r.hit && !r.partialHit).length
+  const pct = total > 0 ? Math.round((passed / total) * 100) : 0
 
   console.log('─'.repeat(50))
   console.log(`${BOLD}Results: ${passed}/${total} full pass (${pct}%)${RESET}`)
   console.log(`  ${GREEN}✓ Pass:    ${passed}${RESET}`)
   console.log(`  ${YELLOW}~ Partial: ${partial}${RESET}  (at least one expected slug retrieved)`)
   console.log(`  ${RED}✗ Fail:    ${failed}${RESET}  (no expected slug retrieved)`)
+  if (smokeTests.length > 0) {
+    console.log(`  ${DIM}○ Smoke:   ${smokeTests.length}${RESET}  (edge case tests, no assertions)`)
+  }
   console.log()
 
   if (failed > 0) {
     console.log(`${RED}Failed cases:${RESET}`)
-    results.filter(r => !r.partialHit).forEach(r =>
+    realTests.filter(r => !r.hit && !r.partialHit).forEach(r =>
       console.log(`  • "${r.question}" — expected: ${r.expectedSlugs.join(', ')}`)
     )
     console.log()

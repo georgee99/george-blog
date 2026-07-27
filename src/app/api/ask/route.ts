@@ -61,6 +61,95 @@ function sanitizeQuestion(input: string): string {
     .trim()
 }
 
+async function rewriteQuery(
+  original: string,
+  client: OpenAI
+): Promise<{ rewritten: string; tags: string[] }> {
+  try {
+    const prompt = `Rewrite the user's query for semantic retrieval over a personal technical blog.
+
+Goals:
+- Preserve the user's original meaning and intent.
+- Produce a concise, standalone search query.
+- Expand abbreviations only when their meaning is clear.
+- Replace vague wording with explicit concepts only when supported by the query.
+- Add useful synonyms when they improve recall.
+- Do not invent names, products, technologies, opinions, or intentions.
+- Do not turn informational queries into recommendation queries unless the user asks for recommendations.
+- Resolve pronouns only when their subject is clear. Otherwise, preserve the ambiguity.
+
+Tags:
+- Select zero or more tags from this list only:
+  ["chess", "coding", "coffee", "food", "games", "me", "movie", "music", "ranking", "review", "tech", "watches", "work"]
+- Include a tag only when strongly supported by the query.
+- Return an empty array when no tag clearly applies.
+
+Return only one valid JSON object in this exact shape:
+{
+  "rewritten": "string",
+  "tags": ["string"]
+}
+
+Examples:
+- "best camera" → {"rewritten":"best camera","tags":["tech"]}
+- "how does RAG work?" → {"rewritten":"retrieval augmented generation architecture and how it works","tags":["coding","tech"]}
+- "what does he think about coffee?" → {"rewritten":"opinions about coffee","tags":["coffee"]}
+- "episodes ranked" → {"rewritten":"episodes ranked","tags":["ranking"]}
+- "chess openings" → {"rewritten":"chess openings strategies","tags":["chess"]}
+
+User query:
+<query>
+${original}
+</query>`
+
+    const resp = await client.chat.completions.create({
+      model: RERANK_MODEL, // Reuse the same model for consistency
+      temperature: 0,
+      max_tokens: 150,
+      messages: [
+        {
+          role: 'system',
+          content: 'You are a query rewriter. Output only valid JSON. Never add explanations.',
+        },
+        { role: 'user', content: prompt },
+      ],
+    })
+
+    const content = resp.choices?.[0]?.message?.content?.trim() ?? ''
+
+    // Extract first JSON object if model adds surrounding text
+    const match = content.match(/\{[\s\S]*\}/)
+    if (!match) {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[ask] rewriteQuery: no JSON found in response')
+      }
+      return { rewritten: original, tags: [] }
+    }
+
+    const parsed = JSON.parse(match[0]) as { rewritten?: string; tags?: string[] }
+
+    const rewritten =
+      typeof parsed.rewritten === 'string' && parsed.rewritten.length > 0
+        ? parsed.rewritten
+        : original
+
+    const tags = Array.isArray(parsed.tags)
+      ? parsed.tags.filter((t): t is string => typeof t === 'string' && t.length > 0)
+      : []
+
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[ask] rewriteQuery: "${original}" → "${rewritten}"`, tags)
+    }
+
+    return { rewritten, tags }
+  } catch (error) {
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('[ask] rewriteQuery failed:', error)
+    }
+    return { rewritten: original, tags: [] }
+  }
+}
+
 interface Chunk {
   id: string
   slug: string
@@ -100,14 +189,18 @@ function extractQueryTags(question: string): Set<string> {
   const tags = new Set<string>()
   
   // Extract meaningful tag signals from query
-  if (q.match(/\bmovies?\b|\bfilms?\b|\bcinema\b/)) tags.add('movie')
-  if (q.match(/\btv\b|\bepisodes?\b|\bseries\b|\bsitcom\b/)) tags.add('tv')
-  if (q.match(/\bgames?\b|\bgaming\b/)) tags.add('game')
-  if (q.match(/\bmusic\b|\balbums?\b|\bsongs?\b/)) tags.add('music')
-  if (q.match(/\bwatchs?\b|\bwatches\b/)) tags.add('watch')
+  if (q.match(/\bchess\b/)) tags.add('chess')
+  if (q.match(/\bcod(e|ing)\b|\bsoftware\b|\bprogramming\b|\bdev\b/)) tags.add('coding')
   if (q.match(/\bcoffee\b/)) tags.add('coffee')
-  if (q.match(/\bfood\b|\bgelato\b/)) tags.add('food')
-  if (q.match(/\btech\b|\bsoftware\b|\bcode\b|\bdev\b/)) tags.add('tech')
+  if (q.match(/\bfood\b|\bgelato\b|\bramen\b|\brestaurant\b/)) tags.add('food')
+  if (q.match(/\bgames?\b|\bgaming\b/)) tags.add('games')
+  if (q.match(/\bmovies?\b|\bfilms?\b|\bcinema\b/)) tags.add('movie')
+  if (q.match(/\bmusic\b|\balbums?\b|\bsongs?\b/)) tags.add('music')
+  if (q.match(/\branking\b|\branked\b|\btier list\b/)) tags.add('ranking')
+  if (q.match(/\breview\b|\bopinion\b/)) tags.add('review')
+  if (q.match(/\btech\b|\btechnology\b/)) tags.add('tech')
+  if (q.match(/\bwatchs?\b|\bwatches\b|\btimepiece\b/)) tags.add('watches')
+  if (q.match(/\bwork\b|\bjob\b|\bcareer\b|\bcompany\b/)) tags.add('work')
   
   return tags
 }
@@ -228,9 +321,12 @@ async function selectChunks(
   query: string,
   queryEmbedding: number[],
   chunks: Chunk[],
-  client: OpenAI
+  client: OpenAI,
+  extractedTags: string[] = []
 ): Promise<Chunk[]> {
-  const queryTags = extractQueryTags(query)
+  // Merge LLM-extracted tags with regex-extracted tags
+  const regexTags = extractQueryTags(query)
+  const queryTags = new Set<string>([...extractedTags, ...Array.from(regexTags)])
 
   // Semantic/vector search 
   const semanticScored = chunks.map(c => {
@@ -246,7 +342,7 @@ async function selectChunks(
         adjustedScore += 0.10
       } else {
         // Penalize conflicting media types
-        const mediaTypes = new Set(['movie', 'tv', 'game'])
+        const mediaTypes = new Set(['movie', 'games', 'music'])
         const queryMedia = Array.from(queryTags).filter(t => mediaTypes.has(t))
         const chunkMedia = Array.from(chunkTags).filter(t => mediaTypes.has(t))
         
@@ -471,11 +567,15 @@ export async function POST(req: NextRequest) {
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'content', content })}\n\n`))
         }
 
+        // Query rewriting
+        sendProgress('Optimizing search query...')
+        const { rewritten: queryForSearch, tags: extractedTags } = await rewriteQuery(sanitized, client)
+
         // Embedding
         sendProgress('Searching blog posts...')
         const embeddingRes = await client.embeddings.create({
           model: EMBEDDING_MODEL,
-          input: sanitized,
+          input: queryForSearch,
         })
         const queryEmbedding = embeddingRes.data[0].embedding
 
@@ -484,7 +584,13 @@ export async function POST(req: NextRequest) {
           sendProgress('Analyzing relevance...')
         }
         
-        const selectedChunks = await selectChunks(sanitized, queryEmbedding, store.chunks, client)
+        const selectedChunks = await selectChunks(
+          queryForSearch,
+          queryEmbedding,
+          store.chunks,
+          client,
+          extractedTags
+        )
 
         if (process.env.NODE_ENV === 'development') {
           console.log('[ask] selected chunks:', selectedChunks.map(c => `${c.id} (${c.tokenEstimate} tokens)`))
