@@ -6,6 +6,8 @@ published: true
 tags: ["coding","tech"]
 ---
 
+**Previous**: [Adding Hybrid Search to my RAG](/blog/adding-hybrid-search-rag)
+
 When I first added RAG search to my blog, I was impressed by how well embeddings could understand the meaning behind a question. Since then I've gradually improved retrieval by introducing hybrid search and later GPT re-ranking. Each addition solved a different problem, but I still wanted to make it better. One thing which my mate and I noticed after testing it with the most random prompts was that the quality of retrieval still depended heavily on how the user phrased their question.
 
 Most people don't naturally write search-optimised queries. They use abbreviations, omit context, or ask conversational questions because that's how we normally communicate. While embeddings are good at understanding semantics, they can only work with the text they're given. That led me to another common technique used in production RAG systems called query rewriting.
