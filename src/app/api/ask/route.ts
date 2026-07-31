@@ -80,7 +80,7 @@ Goals:
 
 Tags:
 - Select zero or more tags from this list only:
-  ["chess", "coding", "coffee", "food", "games", "me", "movie", "music", "ranking", "review", "tech", "watches", "work"]
+  ["chess", "coding", "coffee", "food", "games", "me", "film", "music", "ranking", "review", "tech", "watches", "work"]
 - Include a tag only when strongly supported by the query.
 - Return an empty array when no tag clearly applies.
 
@@ -194,7 +194,7 @@ function extractQueryTags(question: string): Set<string> {
   if (q.match(/\bcoffee\b/)) tags.add('coffee')
   if (q.match(/\bfood\b|\bgelato\b|\bramen\b|\brestaurant\b/)) tags.add('food')
   if (q.match(/\bgames?\b|\bgaming\b/)) tags.add('games')
-  if (q.match(/\bmovies?\b|\bfilms?\b|\bcinema\b/)) tags.add('movie')
+  if (q.match(/\bfilms?\b|\bfilms?\b|\bcinema\b/)) tags.add('film')
   if (q.match(/\bmusic\b|\balbums?\b|\bsongs?\b/)) tags.add('music')
   if (q.match(/\branking\b|\branked\b|\btier list\b/)) tags.add('ranking')
   if (q.match(/\breview\b|\bopinion\b/)) tags.add('review')
@@ -342,7 +342,7 @@ async function selectChunks(
         adjustedScore += 0.10
       } else {
         // Penalize conflicting media types
-        const mediaTypes = new Set(['movie', 'games', 'music'])
+        const mediaTypes = new Set(['film', 'games', 'music'])
         const queryMedia = Array.from(queryTags).filter(t => mediaTypes.has(t))
         const chunkMedia = Array.from(chunkTags).filter(t => mediaTypes.has(t))
         
