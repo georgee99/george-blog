@@ -40,7 +40,7 @@ export default function SpidermanToggle() {
       }}
       title="Click me..."
     >
-      Spiderman
+      Spider-Man
     </span>
   )
 }
