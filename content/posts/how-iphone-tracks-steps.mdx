@@ -1,0 +1,56 @@
+---
+title: How the iPhone Tracks Your Steps
+date: 2026-08-09
+description: Looking into how the iPhone tracks steps using its motion sensors
+published: true
+tags: ["tech"]
+---
+
+I've been using the iOS health app to track my steps for years, but I've never really properly investigated how my iPhone actually knows when I've taken a step. When I was younger, I assumed GPS played a big part in this. Later on as I got more into the software engineering field I realised most of the work actually comes from the motion sensors already inside the iPhone.
+
+Apple doesn't explicitly say the exact algorithm it uses to decide when a movement should count as a step. However, there is a bit of information available through Apple's [Core Motion documentation](https://developer.apple.com/documentation/coremotion/) and the APIs that developers can use. Looking through these gives a pretty good idea of what's happening between moving your phone and seeing another step appear in the Health app.
+
+## Breaking down step tracking
+
+Apple has a framework called "Core Motion" which is used for working with both motion and environmental data that's collected by the device. An iPhone contains sensors such as an accelerometer and gyroscope which continuously provide information about how the device is moving. The accelerometer measures acceleration across three axes, while the gyroscope measures the rotation of the device. Core Motion can then provide developers with either the raw sensor measurements or motion data that has already been processed by the system.
+
+Apple also provides a class called [`CMPedometer`](https://developer.apple.com/documentation/coremotion/cmpedometer), which gives developers access to the pedestrian related data calculated which includes the number of steps taken, distance travelled, floors ascended and descended, and pace. The important distinction is that an app doesn't necessarily have to take raw accelerometer readings and build its own step counter. iOS can do the underlying motion processing and provide the useful result instead.
+
+## Detecting a step
+
+The accelerometer is important for understanding how a phone can detect walking. Every time you walk, your body creates a repeated pattern of acceleration as you move forward and your feet hit the ground. If the phone is in your pocket, these movements are transferred to the phone and recorded by its sensors. Instead of treating every individual movement as a step, a pedometer can analyse changes in acceleration over time and look for patterns that are consistent with walking.
+
+This is where Apple's implementation becomes less transparent. `CMPedometer` gives developers the resulting step count, but Apple doesn't publicly document the exact thresholds, filtering, or algorithms it uses to turn sensor measurements into individual steps. We know what sensors are available and what comes out of the system, but the processing between those two points is mostly hidden. For that reason, we can't really say that every acceleration spike represents a step or that Apple is using one particular signal processing algorithm.
+
+One thing this does say though is why simply shaking an iPhone doesn't always increase the step count for every movement. Accelerometer based pedometers generally need to recognise a repeating pattern that resembles walking rather than responding to individual movements in isolation. Apple's method for doing this isn't public, but the fact that iOS exposes processed pedometer data rather than requiring developers to interpret every sensor reading themselves shows how much work is happening underneath the step count.
+
+## Knowing when you're walking
+
+Step counting also exists as part of a much broader motion system. Apple exposes another Core Motion class called [`CMMotionActivity`](https://developer.apple.com/documentation/coremotion/cmmotiionactivity), which can describe the type of activity the device believes is taking place. These classifications include stationary, walking, running, cycling, automotive and unknown. This shows that iOS is capable of understanding more than just whether the phone is moving.
+
+Something I found kind of funny was that these classifications aren't always absolute. Core Motion provides a confidence level of low, medium or high for its activity classifications, and multiple activity states can sometimes apply at once. 
+
+Apple doesn't say that `CMMotionActivity` is directly responsible for deciding whether `CMPedometer` records a step, so I wouldn't assume that the two work together in exactly that way. It does show how much contextual information the iPhone can derive from its motion sensors though.
+
+## Keeping the count accurate
+
+Detecting movement is only half of the problem. An iPhone moves constantly throughout the day for reasons that have nothing to do with walking. The pedometer needs to filter out enough of this unrelated movement so that the final number still represents actual steps.
+
+This becomes even more interesting when an Apple Watch is involved because there can now be multiple devices contributing similar information. Apple's [Health data documentation](https://support.apple.com/en-us/108779) explains that Health can receive the same types of data from several apps and devices and maintains a priority order between those sources. This prevents Health from treating every measurement from every connected device as completely independent information. Users can even view the individual apps and devices contributing data and change their priority.
+
+There are still limitations to how accurately a phone can measure steps. The device can be carried in different positions, left behind while someone walks around, or exposed to movements that resemble walking. Apple doesn't publish all of the filtering it performs internally, so there is a limit to how far the implementation can be broken down from public information. 
+
+## My take
+
+The biggest thing that surprised me was how little GPS has to do with basic step counting. I always associated movement tracking with location, but the accelerometer and the rest of the iPhone's motion hardware can provide enough information for iOS to recognise pedestrian activity without needing to constantly track where you are.
+
+The separation between the hardware, Core Motion and Health was also interesting. The sensors collect the raw movement, iOS processes that information into useful motion and pedometer data, and Health eventually presents it as something as simple as a daily step count. Apple exposes enough of this system for developers to build applications around it, while keeping the exact step detection implementation private. It's a pretty good example of how something you barely notice using every day can have a surprising amount of engineering happening underneath it.
+
+<div className="not-prose">
+  <img
+    src="/meow/S33.png"
+    alt="My cat"
+    className="mx-auto block w-70"
+    style={{ height: "auto" }}
+  />
+</div>
