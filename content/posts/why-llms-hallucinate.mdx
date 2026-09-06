@@ -1,0 +1,44 @@
+---
+title: Why LLMs hallucinate
+date: 2026-09-06
+description: Quick guide on why LLMs hallucinate
+published: true
+tags: ["coding"]
+---
+
+I think it's fair to say everyone with internet access in the last year has used an LLM at some point. My usage of LLMs personally is likely 10x the amount as the average person. Whilst this tool has been incredibly useful to everyone, it's fair to say that it doesn't always perform perfectly. One thing a lot of users encounter is hallucinations. At a surface level, a hallucination is when responses by the AI contain false, fabricated, or even misleading information which is presented as an absolute fact. It's surprising that such an intelligent model could hallucinate at all, but when you understand the underlying functionality, it makes sense why this happens.
+
+## What an LLM is actually doing
+
+LLMs generate responses by predicting tokens sequentially. At their core, they aren't trying to determine whether something is true, but instead predict an appropriate continuation of the text they're given. The model looks at the tokens it has so far and assigns probabilities to possible tokens that could come next. A token is then chosen, added to the sequence, and the process repeats. LLMs undergo a significant amount of training on text, allowing them to learn patterns and relationships that influence these probabilities. One common misconception is that LLMs simply retrieve an answer from a database. Their ability to produce convincing language is therefore different from their ability to guarantee that something is true.
+
+## Where hallucinations come from
+
+There's many small reasons why hallucinations happen. The underlying reason is that text generation doesn't verify every generated claim against a reliable source. It wouldn't be feasible to do so. Another reason is that the information needed to answer a question isn't strongly represented or available within the present context.
+
+Even when information is missing, the model can still generate something that "statistically" makes sense based on what it has learnt. This is especially noticeable with obscure topics or when a question contains a false assumption. Once incorrect information is generated, it also becomes part of the context for the tokens that follow. This can result in an answer that sounds completely coherent, despite being based on something that isn't true.
+
+## Why confidence doesn't mean correctness
+
+People tend to associate confident language with certainty, but an LLMs writing style isn't a reliable indication that what it's saying is correct. It can produce the same polished and authoritative response regardless of whether the information is true or completely made up. The model doesn't experience confidence in the same way we do, and a high probability for the next token doesn't mean the overall claim is factually correct. This is part of what makes hallucinations so convincing to normal people.
+
+## Why hallucinations are difficult to eliminate
+
+If there were a simple ```hallucination = false``` setting, we would've eliminated it by now. Hallucinations are connected to the fundamental way that generative models produce text, so a setting like this isn't possible without causing other issues. If a model refused to answer whenever it's slightly uncertain, it would become overly cautious and then refuse questions it actually knows the answers to. Better training and post-training can reduce them, but it doesn't guarantee anything.
+
+## Reducing hallucinations
+
+There are a few ways to reduce hallucinations. One that I've worked with personally is RAG. Instead of relying entirely on what the model already knows, RAG retrieves relevant information and provides it as context for the response. Web search works in a similar way by giving the model access to external and more up-to-date information rather than relying entirely on its training. Prompting can also help by encouraging the model to admit when it doesn't have enough information instead of trying to produce an answer anyway. None of these methods completely eliminate hallucinations though. RAG can retrieve irrelevant information, web sources can be incorrect, and the model can still misunderstand the context it's given.
+
+## My take
+
+LLMs can still be extremely useful without being completely reliable sources of truth. RAG, web search and better prompting can make their responses more reliable, but none of them completely solve the problem. This isn't to discourage anyone from using LLMs, but it's important to understand their limitations and not automatically assume everything they generate is correct. For most uses they're an incredibly useful tool, but when accuracy really matters, the information they provide should still be verified.
+
+<div className="not-prose">
+  <img
+    src="/meow/S35.png"
+    alt="My cat"
+    className="mx-auto block w-80"
+    style={{ height: "auto" }}
+  />
+</div>
