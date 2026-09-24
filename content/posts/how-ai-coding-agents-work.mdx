@@ -1,0 +1,56 @@
+---
+title: How AI coding agents work
+date: 2026-09-24
+description: How AI coding agents understand and make changes to a codebase
+published: true
+tags: ["coding"]
+---
+
+AI coding agents have become a pretty normal part of software development. You can give an agent a task, let it look through your codebase, and within seconds it can start making changes across multiple files. From the outside, it can look like the LLM itself is searching through your project and directly editing the code.
+
+The LLM is only one part of the system however, with tools around it giving it the ability to read files, search through a repository, edit code and run commands. I’ve previously written about [what an AI agent is](https://georgeelz.blog/blog/what-an-ai-agent-is), but in this case these tools are specifically about what allow a coding agent to work with an actual codebase rather than simply generating code in a response.
+
+## Understanding the codebase
+
+Before changing anything, the agent needs to work out where the relevant code actually is. Giving an entire repository to the LLM at once usually isn't ideal, especially with larger projects. Instead, coding agents can use tools to explore the codebase and retrieve the information they need.
+
+This includes searching for files, looking for specific symbols or text, and reading individual files that appear relevant to the task. The contents of those files can then be added to the context available to the LLM. If more information is needed, the agent can continue searching and reading other parts of the codebase.
+
+## Deciding what to change
+
+Once the relevant code is available in its context, the LLM can determine what needs to change. A simple task might only require modifying a single function, while a larger change could involve several files and different parts of the application.
+
+The agent also doesn't necessarily need to know everything from the original prompt. It can gather information as it works, decide that additional context is required, and use another tool to retrieve it. This creates a loop where the LLM can alternate between understanding the problem and taking actions within the codebase.
+
+## Actually editing the files
+
+The LLM itself isn't directly opening a file and typing code into it. The coding agent provides tools that allow the model to request changes to the filesystem. Depending on the agent, this could involve applying a patch, replacing a section of a file, or writing new contents to it.
+
+For example, if an agent is asked to make an email address required when creating a user, it could search the repository for the code responsible for creating users, read the relevant request model and determine that the `Email` property needs validation. The LLM can then generate the required change, while an editing tool actually applies that change to the file. This distinction is important. The LLM determines what the change should be, while the surrounding tools give it the ability to actually perform the change.
+
+## Checking its own work
+
+Making a change doesn't necessarily mean the task is finished. Coding agents can also be given tools for running builds, tests, linters and other terminal commands. The results of these commands can then be returned to the LLM as additional context.
+
+If a build fails after an edit, the agent can receive the error output, inspect the relevant code and determine another change to make. It can then edit the files again and rerun the command. This creates a feedback loop where the agent can make changes and check the result rather than relying entirely on its first attempt.
+
+## What the LLM actually does
+
+The LLM and the tools around it have separate responsibilities. The LLM interprets the request, processes the code and other information placed in its context, and determines what actions should happen next. The tools provide access to things outside of the model itself.
+
+Reading files, searching a repository, applying edits and running terminal commands are all actions that can be handled by these tools. Their results are returned to the LLM, which can then decide on the next action. This cycle can continue until the task is completed or the agent determines that it needs more information.
+
+## My take
+
+I think the distinction between the LLM and its tools is one of the most important parts of understanding coding agents. It can initially look like the model has complete control over the codebase, but it's really making a series of decisions and using the tools available to carry them out.
+
+This is also what makes coding agents more useful than basic code generation. Instead of generating some code and leaving me to work out where it belongs, an agent can inspect the actual project, make the changes and check whether they work. It doesn't guarantee that the code is correct, but the ability to interact with the environment gives the LLM much more context to work with.
+
+<div className="not-prose">
+  <img
+    src="/meow/S36.png"
+    alt="My cat"
+    className="mx-auto block w-70"
+    style={{ height: "auto" }}
+  />
+</div>
