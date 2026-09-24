@@ -2,31 +2,55 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://georgeelz.blog/</loc>
-    <lastmod>2026-08-22T13:41:15.076Z</lastmod>
+    <lastmod>2026-09-24T08:55:33.311Z</lastmod>
     <changefreq>daily</changefreq>
     <priority>1</priority>
   </url>
   <url>
     <loc>https://georgeelz.blog/blog</loc>
-    <lastmod>2026-08-22T13:41:15.076Z</lastmod>
+    <lastmod>2026-09-24T08:55:33.311Z</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
     <loc>https://georgeelz.blog/ask</loc>
-    <lastmod>2026-08-22T13:41:15.076Z</lastmod>
+    <lastmod>2026-09-24T08:55:33.311Z</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://georgeelz.blog/guestbook</loc>
-    <lastmod>2026-08-22T13:41:15.076Z</lastmod>
+    <lastmod>2026-09-24T08:55:33.311Z</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://georgeelz.blog/blog/swatch-clearly-gent</loc>
-    <lastmod>2026-08-22T13:41:15.054Z</lastmod>
+    <lastmod>2026-09-24T08:55:33.277Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://georgeelz.blog/blog/how-ai-coding-agents-work</loc>
+    <lastmod>2026-09-24T00:00:00.000Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://georgeelz.blog/blog/learning-how-to-make-coffee-properly</loc>
+    <lastmod>2026-09-13T00:00:00.000Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://georgeelz.blog/blog/why-llms-hallucinate</loc>
+    <lastmod>2026-09-06T00:00:00.000Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://georgeelz.blog/blog/spiderman-suits-ranked</loc>
+    <lastmod>2026-08-30T00:00:00.000Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
