@@ -1,0 +1,64 @@
+---
+title: How public-key cryptography works
+date: 2026-10-11
+description: How does public-key cryptography work
+published: true
+tags: ["tech"]
+---
+
+Public-key cryptography is used in a lot of the technology we deal with every day, including browsing websites, sending messages, and connecting to servers. It allows information to be exchanged securely over the internet without both parties needing to share the same secret key beforehand. The concept relies on two mathematically related keys, one public and one private. Understanding how these keys work makes it easier to see how secure communication is actually possible.
+
+## The problem with symmetric encryption
+
+Traditional symmetric encryption uses the same secret key to encrypt and decrypt information. This works well when both parties already have the key, but the problem comes when they need to share it in the first place.
+
+If two people are communicating over the internet, sending the secret key directly would potentially allow someone intercepting the connection to obtain it. They'd then be able to use that key to decrypt the information being exchanged. This is known as the key distribution problem, and it's one of the main limitations of symmetric encryption when the parties don't already share a secret.
+
+## Public and private keys
+
+Public-key cryptography works differently by using two separate keys instead of one shared secret. These are generated together using cryptographic software, with each key having a different purpose.
+
+The public key can be shared with anyone, while the private key needs to be kept secret. Both keys are mathematically related, but knowing someone's public key doesn't mean you can work out their private key. With secure algorithms and appropriate key sizes, doing so would require an impractical amount of computing power.
+
+This is what makes the approach useful. Someone can publish their public key for anyone to use without having to expose the private key that goes with it.
+
+## How encrypted messages work
+
+Imagine Erika wants to send Sebastian a private message over the internet. Sebastian first generates a public and private key pair, keeping his private key on his device while sharing his public key with Erika.
+
+Erika can then use Sebastian's public key to encrypt her message before sending it. Even if someone intercepts the encrypted message, they won't be able to read its contents without the corresponding private key. When Sebastian receives it, he uses his private key to decrypt the message and recover what Erika originally wrote.
+
+If Sebastian wants to reply, the process works the other way around. He encrypts his message using Erika's public key, and she decrypts it using her own private key.
+
+The important thing is that neither person needs to send their private key anywhere. Only the public keys need to be shared, although each person also needs a reliable way to verify that the public key actually belongs to the intended recipient.
+
+## Where it's used
+
+One of the most common examples is HTTPS, which protects information travelling between your browser and a website. Public-key cryptography helps authenticate the website and establish shared secrets, while faster symmetric encryption is used to protect the actual data being transferred.
+
+For developers, SSH is another example. When connecting to a remote server or using Git over SSH, you can generate a key pair and register your public key with the service. Your private key stays on your computer, allowing you to prove you have it without actually sending it to the server.
+
+Public-key cryptography is also used in encrypted messaging applications, passkeys and software updates. These systems use the same general idea in different ways, including establishing secure connections, authenticating users and verifying digital signatures.
+
+## Key rotation
+
+Public and private keys aren't necessarily permanent. They can be replaced by generating a completely new key pair, which is known as key rotation.
+
+This might happen because a private key has been compromised, a certificate is expiring or an organisation has a policy requiring keys to be replaced. The new public key then needs to be distributed or registered wherever the old one was being used.
+
+Some systems also generate temporary keys for individual connections. Modern HTTPS connections, for example, typically establish fresh session secrets rather than using the same encryption keys indefinitely.
+
+## My take
+
+What I like about public-key cryptography is that you can share one of your keys with absolutely anyone without compromising the other. It sounds like something that shouldn't work at all.
+
+It's also pretty interesting how much of the internet relies on this without most people ever noticing. Something as simple as opening a website or connecting to a server involves quite a bit of cryptography happening behind the scenes.
+
+<div className="not-prose">
+  <img
+    src="/meow/M36.png"
+    alt="My cat"
+    className="mx-auto block w-70"
+    style={{ height: "auto" }}
+  />
+</div>
