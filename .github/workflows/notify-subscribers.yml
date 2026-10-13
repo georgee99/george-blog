@@ -3,7 +3,7 @@ name: Notify Subscribers
 on:
   push:
     branches:
-      - main
+      - master
     paths:
       - 'content/posts/*.mdx'
   workflow_dispatch:
