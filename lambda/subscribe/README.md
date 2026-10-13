@@ -1,5 +1,15 @@
 ## Notifying subscribers
 
+The normal path is automated by `.github/workflows/notify-subscribers.yml`:
+
+- A push to `main` that changes exactly one post under `content/posts/` generates the email and invokes `george-blog-subscribe-prod-notifySubscribers` through AWS Lambda's private API.
+- The workflow can also be started manually from GitHub Actions with a post slug.
+- GitHub authenticates to AWS with OIDC using the `AWS_NOTIFY_ROLE_ARN` repository secret. No public Lambda Function URL is required.
+
+The workflow does not send automatically when a push changes zero or multiple posts. Use its manual dispatch option in that case.
+
+## Manual fallback
+
 To email all confirmed subscribers when a new post is published:
 
 1. Generate the test event JSON from the repo root:
