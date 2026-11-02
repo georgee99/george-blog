@@ -1,0 +1,67 @@
+---
+title: How shazam works
+date: 2026-11-02
+description: Understanding the underlying tech behind the Shazam application
+published: true
+tags: ["tech"]
+---
+
+Every week you discover a new song in public which you haven't heard before. The most annoying part about it is not knowing the name. Shazam has been everyone's go-to solution to solving this problem. It's incredibly impressive at figuring out the song with only a few seconds of audio, and even background noise. However, not many people know how the underlying tech works under the hood. 
+
+## Understanding sound frequencies 
+
+Before diving into the tech, you need to understand the fundamentals. Sound is made up of vibrations, and different frequencies correspond to different pitches. Music contains many different frequencies playing simultaneously, from low bass notes to higher-pitched instruments and vocals. To represent these as visual metrics, a spectrogram is used. In this case, it can display how the frequencies in an audio recording change over time. The horizontal axis represents time, while the vertical axis represents frequency. The intensity of each point indicates how strong that frequency is at a particular moment. For Shazam's interest, this allows a song to be represented as a pattern of frequencies that change throughout the recording.
+
+## How audio fingerprinting works
+
+Shazam doesn't actually compare entire audio recordings to identify a song. Instead, it uses something called audio fingerprinting, which creates a much smaller representation of a recording based on its distinctive characteristics. This is where the spectrogram becomes useful.
+
+Shazam analyses the spectrogram and identifies prominent frequency peaks, which are points where certain frequencies are particularly strong. These peaks are useful because they can still be detected even when there's background noise interfering with the recording. The algorithm then pairs selected peaks together, using their frequencies and the time difference between them to create individual fingerprints.
+
+<div className="not-prose">
+  <img
+    src="/inserts/SPECTOGRAPH.png"
+    alt="solid meme"
+    className="mx-auto mt-2 block w-150"
+    style={{ height: "auto" }}
+  />
+</div>
+
+A collection of these fingerprints forms a distinctive pattern that can be used to identify a particular recording. Shazam also generates fingerprints for songs in its existing catalogue, which means it can compare the fingerprints from your recording against those already stored in its database.
+
+## How Shazam finds the matching song
+
+When you activate Shazam, your phone records a short sample of whatever music is playing around you. The recording is then processed into audio fingerprints using the same approach as the songs in its catalogue. These fingerprints are searched against a database containing fingerprints from millions of known recordings.
+
+Rather than comparing your recording against every song individually, Shazam uses an index that allows it to quickly find recordings containing matching fingerprints. However, finding a few matching fingerprints doesn't necessarily mean it's found the correct song. Different recordings can contain similar frequencies, so some matches can happen by coincidence.
+
+To deal with this, Shazam looks at the timing of the matching fingerprints. If several fingerprints from your recording also appear in another song with the same relative timing, there's a much stronger chance that it's the correct match. Once enough fingerprints line up consistently, Shazam can identify the recording and return information such as the song's title and artist.
+
+## Why it works with background noise
+
+One of the more impressive things about Shazam is that it doesn't need a perfectly clear recording to identify a song. You could be sitting in a busy cafe with people talking around you, and it might still recognise whatever music is playing in the background.
+
+This works because audio fingerprinting focuses on prominent frequency peaks rather than every detail of the recording. Some of these peaks can still be detected even when other sounds are present. Although background noise might interfere with certain fingerprints, Shazam only needs enough matching fingerprints to confidently identify the recording.
+
+This is why it can work surprisingly well in places like shopping centres, restaurants, and other noisy environments.
+
+## Where Shazam struggles
+
+Despite how effective Shazam is, there are still situations where it struggles to identify music. One of the main limitations is that it relies on matching audio fingerprints against recordings already stored in its catalogue. If the recording isn't there, Shazam won't be able to identify it using this approach.
+
+Live performances and cover versions can also be difficult because they might sound quite different from the original studio recording. Even if the melody and lyrics are identical, the actual frequencies and timing can vary enough to produce different fingerprints. Remixes and significant changes in playback speed can cause similar problems.
+
+## My take
+
+I think the most interesting thing about Shazam is how it can identify a song without actually needing to understand the music. It doesn't need to recognise the lyrics, instruments or even the melody itself. Instead, it relies on identifying patterns in sound frequencies and efficiently searching for matching fingerprints.
+
+It's also another one of those technologies that's easy to take for granted because of how simple it is to use. You press a button, wait a few seconds and suddenly know the name of a song you've never heard before. Understanding how much signal processing and database searching happens behind the scenes makes me appreciate the technology a lot more. It's a clever solution to a relatively simple everyday problem.
+
+<div className="not-prose">
+  <img
+    src="/meow/S38.png"
+    alt="My cat"
+    className="mx-auto block w-72"
+    style={{ height: "auto" }}
+  />
+</div>
