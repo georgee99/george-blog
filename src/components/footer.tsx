@@ -9,6 +9,12 @@ export function Footer() {
       </p>
       <div className="flex gap-4 text-sm text-neutral-500">
         <a
+          href="/feed.xml"
+          className="transition-colors hover:text-neutral-900 dark:hover:text-neutral-100"
+        >
+          RSS
+        </a>
+        <a
           href={siteConfig.social.github}
           target="_blank"
           rel="noopener noreferrer"

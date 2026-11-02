@@ -11,6 +11,7 @@ export interface PostMeta {
   description: string;
   published: boolean;
   tags: string[];
+  image?: string;
 }
 
 export interface Post {
@@ -45,6 +46,7 @@ function readPostMeta(slug: string): PostMeta {
     description: data.description ?? "",
     published: data.published !== false,
     tags: Array.isArray(data.tags) ? data.tags.map(String) : [],
+    image: typeof data.image === "string" ? data.image : undefined,
   };
 }
 
@@ -61,6 +63,7 @@ export async function getPost(slug: string): Promise<Post | null> {
     description: data.description ?? "",
     published: data.published !== false,
     tags: Array.isArray(data.tags) ? data.tags.map(String) : [],
+    image: typeof data.image === "string" ? data.image : undefined,
   };
   return { meta, source: content };
 }

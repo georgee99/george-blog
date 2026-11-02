@@ -29,7 +29,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 2
+          fetch-depth: 0
 
       - name: Determine post slug
         id: post
@@ -42,12 +42,26 @@ jobs:
         run: |
           if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
             echo "slug=$MANUAL_SLUG" >> "$GITHUB_OUTPUT"
+            echo "should_notify=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [[ -z "$BEFORE_SHA" || "$BEFORE_SHA" =~ ^0+$ ]]; then
+            echo "No reliable previous commit. Skipping automatic notification."
+            echo "should_notify=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
           mapfile -t changed_posts < <(
-            git diff --name-only --diff-filter=A "$BEFORE_SHA" "$CURRENT_SHA" -- 'content/posts/*.mdx'
+            git diff --name-only --diff-filter=A "$BEFORE_SHA" "$CURRENT_SHA" -- content/posts \
+              | grep -E '^content/posts/[^/]+\.mdx$' || true
           )
+
+          if [[ "${#changed_posts[@]}" -eq 0 ]]; then
+            echo "No newly added posts. Updates do not send notifications."
+            echo "should_notify=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
 
           if [[ "${#changed_posts[@]}" -ne 1 ]]; then
             echo "Expected exactly one newly added post, found ${#changed_posts[@]}."
@@ -58,17 +72,21 @@ jobs:
 
           filename="${changed_posts[0]##*/}"
           echo "slug=${filename%.mdx}" >> "$GITHUB_OUTPUT"
+          echo "should_notify=true" >> "$GITHUB_OUTPUT"
 
       - name: Setup Node.js
+        if: steps.post.outputs.should_notify == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: npm
 
       - name: Install dependencies
+        if: steps.post.outputs.should_notify == 'true'
         run: npm ci
 
       - name: Generate email payload
+        if: steps.post.outputs.should_notify == 'true'
         run: |
           npm run generate-email-html -- \
             --slug "${{ steps.post.outputs.slug }}" \
@@ -76,12 +94,14 @@ jobs:
             --author "George"
 
       - name: Configure AWS credentials
+        if: steps.post.outputs.should_notify == 'true'
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_NOTIFY_ROLE_ARN }}
           aws-region: ap-southeast-2
 
       - name: Invoke notification Lambda
+        if: steps.post.outputs.should_notify == 'true'
         run: |
           aws lambda invoke \
             --function-name george-blog-subscribe-prod-notifySubscribers \
