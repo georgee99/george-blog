@@ -102,7 +102,8 @@ The command prints the endpoint URLs. Take the shared prefix up to and including
 
 Notes:
 
-- This service is **not** part of the `Deploy Lambda` GitHub workflow (that only covers `lambda/create-comment`). Deploy it manually when its code changes.
+- After the initial deployment, pushes to `master` that change `lambda/rag-analytics/**` automatically type-check and deploy this service through the `Deploy RAG Analytics Lambda` GitHub workflow. The workflow can also be started manually.
+- Configure the GitHub repository secrets `AWS_DEPLOY_ROLE_ARN` (an AWS OIDC role with permission to deploy this service's CloudFormation resources) and `RAG_ANALYTICS_API_KEY` (the same value configured in Vercel). The AWS deployment role secret is also used by the existing Lambda workflow.
 - The table has `DeletionPolicy: Retain`: removing the stack leaves the table (and its data) behind. Delete it manually if you really want it gone.
 - `serverless print` (run via `npx dotenv -e ../../.env.local -- serverless print`) validates the config without deploying.
 
@@ -171,4 +172,3 @@ After deploying, on `https://georgeelz.blog`:
 - **The analytics API key is a shared secret.** It sits in Vercel env vars and the Lambda configuration (readable by anyone with AWS `lambda:GetFunctionConfiguration`). Rotate it if either is exposed.
 - **One administrator, no audit log** of admin page views.
 - No automated tests (a deliberate choice for this release). Use the checklist above.
-
