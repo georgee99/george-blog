@@ -17,6 +17,69 @@ function getTableName(): string {
   return name;
 }
 
+export interface CommentLocation {
+  countryCode?: string;
+  regionCode?: string;
+  city?: string;
+  timezone?: string;
+  latitude?: number;
+  longitude?: number;
+  locationPrecision: 'city' | 'region' | 'country' | 'unknown';
+}
+
+export interface CommentNetwork {
+  asn: string;
+  as_name: string;
+  as_domain: string;
+}
+
+const PRECISIONS = ['city', 'region', 'country', 'unknown'];
+
+// Keep only known, length-limited string fields from untrusted input
+export function sanitizeLocation(input: unknown): CommentLocation | undefined {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) return undefined;
+  const raw = input as Record<string, unknown>;
+  const str = (v: unknown, max: number) =>
+    typeof v === 'string' && v.trim() ? v.trim().slice(0, max) : undefined;
+
+  const countryCode = str(raw.countryCode, 2);
+  const regionCode = str(raw.regionCode, 10);
+  const city = str(raw.city, 100);
+  const timezone = str(raw.timezone, 64);
+  const inRange = (v: unknown, limit: number) =>
+    typeof v === 'number' && Number.isFinite(v) && Math.abs(v) <= limit ? v : undefined;
+  const latitude = inRange(raw.latitude, 90);
+  const longitude = inRange(raw.longitude, 180);
+  const precision = typeof raw.locationPrecision === 'string' && PRECISIONS.includes(raw.locationPrecision)
+    ? (raw.locationPrecision as CommentLocation['locationPrecision'])
+    : 'unknown';
+
+  return {
+    ...(countryCode ? { countryCode } : {}),
+    ...(regionCode ? { regionCode } : {}),
+    ...(city ? { city } : {}),
+    ...(timezone ? { timezone } : {}),
+    ...(latitude !== undefined && longitude !== undefined ? { latitude, longitude } : {}),
+    locationPrecision: precision,
+  };
+}
+
+export function sanitizeNetwork(input: unknown): CommentNetwork | undefined {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) return undefined;
+  const raw = input as Record<string, unknown>;
+  const asn = typeof raw.asn === 'string' ? raw.asn.trim() : '';
+  const asName = typeof raw.as_name === 'string' ? raw.as_name.trim() : '';
+  const asDomain = typeof raw.as_domain === 'string' ? raw.as_domain.trim() : '';
+
+  if (!/^AS\d{1,10}$/i.test(asn) || !asName || !asDomain) return undefined;
+
+  return {
+    asn,
+    as_name: asName.slice(0, 200),
+    as_domain: asDomain.slice(0, 200),
+  };
+}
+
 export interface DynamoComment {
   postSlug: string;
   commentId: string;
@@ -26,6 +89,8 @@ export interface DynamoComment {
   parentId?: string;
   reactions?: Record<string, number>;
   ipHash?: string;
+  location?: CommentLocation;
+  network?: CommentNetwork;
   userAgent?: string;
   clientId?: string;
 }
@@ -50,6 +115,8 @@ export async function insertComment(
   ipHash?: string,
   userAgent?: string,
   clientId?: string,
+  location?: CommentLocation,
+  network?: CommentNetwork,
 ): Promise<DynamoComment> {
   const createdAt = new Date().toISOString();
   const commentId = `${createdAt}#${randomUUID()}`;
@@ -63,6 +130,8 @@ export async function insertComment(
     reactions: {},
     ...(parentId ? { parentId } : {}),
     ...(ipHash ? { ipHash } : {}),
+    ...(location ? { location } : {}),
+    ...(network ? { network } : {}),
     ...(userAgent ? { userAgent } : {}),
     ...(clientId ? { clientId } : {}),
   };

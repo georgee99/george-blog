@@ -18,7 +18,15 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
 
   try {
     const comments = await getComments(postSlug.trim());
-    return json(200, { comments });
+    const publicComments = comments.map(({ commentId, author, content, createdAt, parentId, reactions }) => ({
+      commentId,
+      author,
+      content,
+      createdAt,
+      ...(parentId ? { parentId } : {}),
+      ...(reactions ? { reactions } : {}),
+    }));
+    return json(200, { comments: publicComments });
   } catch (err) {
     console.error('Failed to fetch comments:', err);
     return json(500, { error: 'Failed to fetch comments' });

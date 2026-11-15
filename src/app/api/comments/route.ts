@@ -1,17 +1,113 @@
 import { seedCommentData, seedGuestbookData } from '@/lib/seedData'
-import { createHash } from 'crypto'
+import { createHmac } from 'crypto'
 import { NextRequest, NextResponse } from 'next/server'
 
-function hashIp(ip: string): string {
-  return createHash('sha256').update(ip).digest('hex')
+function hashIp(ip: string): string | undefined {
+  const secret = process.env.IP_HASH_SECRET
+  if (!secret) {
+    console.error('IP_HASH_SECRET is not set; skipping ipHash')
+    return undefined
+  }
+  return createHmac('sha256', secret).update(ip).digest('hex')
 }
 
+// Vercel overwrites x-real-ip on every request, so clients cannot spoof it
 function getIp(req: NextRequest): string {
-  return (
-    req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
-    req.headers.get('x-real-ip') ??
-    'unknown'
-  )
+  return req.headers.get('x-real-ip')?.trim() || 'unknown'
+}
+
+interface Location {
+  countryCode?: string
+  regionCode?: string
+  city?: string
+  timezone?: string
+  latitude?: number
+  longitude?: number
+  locationPrecision: 'city' | 'region' | 'country' | 'unknown'
+}
+
+interface Network {
+  asn: string
+  as_name: string
+  as_domain: string
+}
+
+async function getNetwork(ip: string): Promise<Network | undefined> {
+  const token = process.env.IPINFO_TOKEN
+  if (!token) {
+    console.error('IPINFO_TOKEN is not set; skipping IP network lookup')
+    return undefined
+  }
+
+  try {
+    const response = await fetch(
+      `https://ipinfo.io/${encodeURIComponent(ip)}?token=${encodeURIComponent(token)}`,
+      { cache: 'no-store', signal: AbortSignal.timeout(3000) },
+    )
+    if (!response.ok) {
+      console.error(`IPinfo lookup failed with status ${response.status}`)
+      return undefined
+    }
+
+    const data: unknown = await response.json()
+    if (!data || typeof data !== 'object' || Array.isArray(data)) {
+      console.error('IPinfo returned an invalid response')
+      return undefined
+    }
+
+    const raw = data as Record<string, unknown>
+    const { asn, as_name: asName, as_domain: asDomain } = raw
+    if (
+      typeof asn !== 'string' || !/^AS\d{1,10}$/i.test(asn) ||
+      typeof asName !== 'string' || !asName.trim() ||
+      typeof asDomain !== 'string' || !asDomain.trim()
+    ) {
+      console.error('IPinfo response did not contain valid ASN details')
+      return undefined
+    }
+
+    return {
+      asn: asn.trim(),
+      as_name: asName.trim().slice(0, 200),
+      as_domain: asDomain.trim().slice(0, 200),
+    }
+  } catch (error) {
+    console.error('IPinfo lookup failed; continuing without network details', error)
+    return undefined
+  }
+}
+
+// Vercel sets these geo headers itself; city is URL-encoded
+function getLocation(req: NextRequest): Location {
+  const decode = (v: string | null) => {
+    if (!v) return undefined
+    try {
+      return decodeURIComponent(v)
+    } catch {
+      return v
+    }
+  }
+  const countryCode = decode(req.headers.get('x-vercel-ip-country'))
+  const regionCode = decode(req.headers.get('x-vercel-ip-country-region'))
+  const city = decode(req.headers.get('x-vercel-ip-city'))
+  const timezone = decode(req.headers.get('x-vercel-ip-timezone'))
+  // Rounded to 2 decimals (~1 km); the IP-derived position is only approximate anyway
+  const coord = (v: string | null) => {
+    const n = v ? Number.parseFloat(v) : NaN
+    return Number.isFinite(n) ? Math.round(n * 100) / 100 : undefined
+  }
+  const latitude = coord(req.headers.get('x-vercel-ip-latitude'))
+  const longitude = coord(req.headers.get('x-vercel-ip-longitude'))
+
+  const locationPrecision = city ? 'city' : regionCode ? 'region' : countryCode ? 'country' : 'unknown'
+  return {
+    ...(countryCode ? { countryCode } : {}),
+    ...(regionCode ? { regionCode } : {}),
+    ...(city ? { city } : {}),
+    ...(timezone ? { timezone } : {}),
+    ...(latitude !== undefined && longitude !== undefined ? { latitude, longitude } : {}),
+    locationPrecision,
+  }
 }
 
 export async function GET(req: NextRequest) {
@@ -74,7 +170,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ message: 'Comment received (not saved in development)' })
   }
 
-  const ipHash = hashIp(getIp(req))
+  const ip = getIp(req)
+  const ipHash = ip === 'unknown' ? undefined : hashIp(ip)
+  const location = getLocation(req)
+  const network = ip === 'unknown' ? undefined : await getNetwork(ip)
   const userAgent = req.headers.get('user-agent') ?? 'unknown'
 
   const lambdaRes = await fetch(lambdaUrl, {
@@ -87,7 +186,9 @@ export async function POST(req: NextRequest) {
       postSlug,
       authorName,
       body: commentBody,
-      ipHash,
+      ...(ipHash ? { ipHash } : {}),
+      location,
+      ...(network ? { network } : {}),
       userAgent,
       ...(typeof clientId === 'string' && clientId ? { clientId } : {}),
       ...(parentId ? { parentId } : {}),
