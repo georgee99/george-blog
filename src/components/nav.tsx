@@ -8,6 +8,7 @@ const navLinks = [
   { href: "/blog", label: "Blog" },
   { href: "/guestbook", label: "Guestbook" },
   { href: "/ask", label: "Ask" },
+  { href: "/admin", label: "Admin" },
 ];
 
 export function Nav() {

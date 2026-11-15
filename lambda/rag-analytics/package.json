@@ -1,0 +1,22 @@
+{
+  "name": "rag-analytics",
+  "version": "1.0.0",
+  "description": "Lambda handlers for RAG query analytics (ingest, list/summary, detail)",
+  "scripts": {
+    "build": "tsc --noEmit",
+    "deploy": "dotenv -e ../../.env.local -- serverless deploy"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.0.0",
+    "@aws-sdk/lib-dynamodb": "^3.0.0"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.0",
+    "@types/node": "^20.19.39",
+    "dotenv-cli": "^7.0.0",
+    "esbuild": "^0.20.0",
+    "serverless": "^3.0.0",
+    "serverless-esbuild": "^1.0.0",
+    "typescript": "^5.0.0"
+  }
+}
