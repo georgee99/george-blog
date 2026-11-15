@@ -28,8 +28,8 @@ interface Location {
 
 interface Network {
   asn: string
-  as_name: string
-  as_domain: string
+  as_name?: string
+  as_domain?: string
 }
 
 async function getNetwork(ip: string): Promise<Network | undefined> {
@@ -41,7 +41,7 @@ async function getNetwork(ip: string): Promise<Network | undefined> {
 
   try {
     const response = await fetch(
-      `https://ipinfo.io/${encodeURIComponent(ip)}?token=${encodeURIComponent(token)}`,
+      `https://api.ipinfo.io/lite/${encodeURIComponent(ip)}?token=${encodeURIComponent(token)}`,
       { cache: 'no-store', signal: AbortSignal.timeout(3000) },
     )
     if (!response.ok) {
@@ -57,19 +57,28 @@ async function getNetwork(ip: string): Promise<Network | undefined> {
 
     const raw = data as Record<string, unknown>
     const { asn, as_name: asName, as_domain: asDomain } = raw
-    if (
-      typeof asn !== 'string' || !/^AS\d{1,10}$/i.test(asn) ||
-      typeof asName !== 'string' || !asName.trim() ||
-      typeof asDomain !== 'string' || !asDomain.trim()
-    ) {
-      console.error('IPinfo response did not contain valid ASN details')
+    const asnValue = typeof asn === 'string' ? asn.trim() : ''
+    const asNameValue = typeof asName === 'string' ? asName.trim() : ''
+    const asDomainValue = typeof asDomain === 'string' ? asDomain.trim() : ''
+    const asnValid = /^AS\d{1,10}$/i.test(asnValue)
+    const asNameValid = Boolean(asNameValue)
+    const asDomainValid = Boolean(asDomainValue)
+
+    console.info('IPinfo ASN field status', {
+      asn: { present: asn !== undefined && asn !== null, valid: asnValid },
+      as_name: { present: asName !== undefined && asName !== null, valid: asNameValid },
+      as_domain: { present: asDomain !== undefined && asDomain !== null, valid: asDomainValid },
+    })
+
+    if (!asnValid) {
+      console.error('IPinfo response did not contain a valid ASN')
       return undefined
     }
 
     return {
-      asn: asn.trim(),
-      as_name: asName.trim().slice(0, 200),
-      as_domain: asDomain.trim().slice(0, 200),
+      asn: asnValue,
+      ...(asNameValid ? { as_name: asNameValue.slice(0, 200) } : {}),
+      ...(asDomainValid ? { as_domain: asDomainValue.slice(0, 200) } : {}),
     }
   } catch (error) {
     console.error('IPinfo lookup failed; continuing without network details', error)

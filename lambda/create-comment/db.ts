@@ -29,8 +29,8 @@ export interface CommentLocation {
 
 export interface CommentNetwork {
   asn: string;
-  as_name: string;
-  as_domain: string;
+  as_name?: string;
+  as_domain?: string;
 }
 
 const PRECISIONS = ['city', 'region', 'country', 'unknown'];
@@ -71,12 +71,12 @@ export function sanitizeNetwork(input: unknown): CommentNetwork | undefined {
   const asName = typeof raw.as_name === 'string' ? raw.as_name.trim() : '';
   const asDomain = typeof raw.as_domain === 'string' ? raw.as_domain.trim() : '';
 
-  if (!/^AS\d{1,10}$/i.test(asn) || !asName || !asDomain) return undefined;
+  if (!/^AS\d{1,10}$/i.test(asn)) return undefined;
 
   return {
     asn,
-    as_name: asName.slice(0, 200),
-    as_domain: asDomain.slice(0, 200),
+    ...(asName ? { as_name: asName.slice(0, 200) } : {}),
+    ...(asDomain ? { as_domain: asDomain.slice(0, 200) } : {}),
   };
 }
 
