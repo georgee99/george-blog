@@ -1,6 +1,6 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { validateCommentInput } from './validate';
-import { insertComment } from './db';
+import { insertComment, sanitizeLocation, sanitizeNetwork } from './db';
 import { publishCommentCreated } from './sns';
 
 function json(statusCode: number, body: object): APIGatewayProxyResult {
@@ -38,7 +38,9 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
   // Insert into DynamoDB
   let comment;
   try {
-    comment = await insertComment(postSlug, authorName, body, parentId, ipHash, userAgent, clientId);
+    const location = sanitizeLocation((parsed as { location?: unknown }).location);
+    const network = sanitizeNetwork((parsed as { network?: unknown }).network);
+    comment = await insertComment(postSlug, authorName, body, parentId, ipHash, userAgent, clientId, location, network);
     console.log(`Comment created with ID ${comment.commentId} for post ${postSlug}`);
   } catch (err) {
     console.error('DB insert failed:', err);
