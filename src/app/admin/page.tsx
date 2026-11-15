@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { auth, signOut } from '@/auth'
 import { getAdminSession } from '@/lib/admin-auth'
+import { AccessDenied } from '@/components/admin-access'
 import { Chart } from '@/components/admin-chart'
 import { fetchQueries, fetchSummary, type SummaryResponse } from '@/lib/rag-analytics/admin-client'
 import {
@@ -40,17 +41,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
   if (!session?.user) redirect('/admin/login')
 
   const admin = await getAdminSession()
-  if (!admin) {
-    return (
-      <div className="space-y-4">
-        <h1 className="text-2xl font-semibold tracking-tight">Access denied</h1>
-        <p className="text-neutral-600 dark:text-neutral-400">
-          This account is not authorised to view the admin area.
-        </p>
-        <LogoutButton />
-      </div>
-    )
-  }
+  if (!admin) return <AccessDenied />
 
   const sp = await searchParams
   const { from, to } = resolveRange(sp.from, sp.to)
@@ -76,12 +67,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
   return (
     <div className="space-y-10">
       <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">RAG analytics</h1>
-          <p className="mt-3 leading-relaxed text-neutral-600 dark:text-neutral-400">
-            Signed in as {admin.user?.email}. All dates and times are UTC.
-          </p>
-        </div>
+        <h1 className="text-2xl font-semibold tracking-tight">RAG analytics</h1>
         <LogoutButton />
       </div>
 
@@ -179,7 +165,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
                 <table className="w-full min-w-[34rem] text-left text-sm">
                   <thead className="text-xs uppercase tracking-widest text-neutral-400">
                     <tr className="border-b border-neutral-200 dark:border-neutral-800">
-                      <th className="py-2 pr-4 font-normal">Time</th>
+                      <th className="py-2 pr-4 font-normal">Time (UTC)</th>
                       <th className="py-2 pr-4 font-normal">Query</th>
                       <th className="py-2 pr-4 font-normal">Model</th>
                       <th className="py-2 pr-4 font-normal">Method</th>
@@ -191,7 +177,14 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
                   <tbody>
                     {queries.data.items.map((q) => (
                       <tr key={q.queryId} className="border-b border-neutral-100 align-top dark:border-neutral-900">
-                        <td className="whitespace-nowrap py-3 pr-4 text-neutral-500">{fmtTimestamp(q.timestamp)}</td>
+                        <td className="whitespace-nowrap py-3 pr-4">
+                          <Link
+                            href={`/admin/queries/${q.queryId}`}
+                            className="text-neutral-500 underline-offset-4 decoration-neutral-300 hover:text-neutral-900 hover:underline dark:decoration-neutral-600 dark:hover:text-neutral-100"
+                          >
+                            {fmtTimestamp(q.timestamp)}
+                          </Link>
+                        </td>
                         <td className="max-w-[16rem] py-3 pr-4 text-neutral-900 dark:text-neutral-100">
                           {q.queryText ? (
                             <span className="line-clamp-2 break-words">{q.queryText}</span>

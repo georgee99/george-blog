@@ -1,3 +1,5 @@
+import type { RagQueryRecord } from './types'
+
 export interface QuerySummaryRow {
   queryId: string
   timestamp: string
@@ -73,6 +75,7 @@ async function request<T>(path: string, filters: AnalyticsFilters): Promise<Anal
       cache: 'no-store',
       signal: AbortSignal.timeout(TIMEOUT_MS),
     })
+    if (res.status === 404) return { ok: false, error: 'Not found.' }
     if (res.status === 400) {
       const body = (await res.json().catch(() => ({}))) as { error?: string }
       return { ok: false, error: body.error ?? 'Invalid request.' }
@@ -91,4 +94,8 @@ export function fetchSummary(filters: AnalyticsFilters) {
 
 export function fetchQueries(filters: AnalyticsFilters) {
   return request<QueriesResponse>('/queries', filters)
+}
+
+export function fetchQueryDetail(queryId: string) {
+  return request<RagQueryRecord>(`/queries/${encodeURIComponent(queryId)}`, {})
 }
