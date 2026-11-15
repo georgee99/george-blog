@@ -1,8 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import fs from 'fs'
 import path from 'path'
 import OpenAI from 'openai'
 import MiniSearch from 'minisearch'
+import { RagTrace } from '@/lib/rag-analytics/trace'
+import { flushTrace } from '@/lib/rag-analytics/client'
+import { sanitizeQueryText } from '@/lib/rag-analytics/sanitize'
 
 // Config
 const EMBEDDING_MODEL = 'text-embedding-3-small'
@@ -63,7 +66,8 @@ function sanitizeQuestion(input: string): string {
 
 async function rewriteQuery(
   original: string,
-  client: OpenAI
+  client: OpenAI,
+  trace?: RagTrace
 ): Promise<{ rewritten: string; tags: string[] }> {
   try {
     const prompt = `Rewrite the user's query for semantic retrieval over a personal technical blog.
@@ -115,6 +119,7 @@ ${original}
       ],
     })
 
+    trace?.recordUsage('rewrite', resp.usage)
     const content = resp.choices?.[0]?.message?.content?.trim() ?? ''
 
     // Extract first JSON object if model adds surrounding text
@@ -243,7 +248,8 @@ function ensureKeywordIndex(chunks: Chunk[]): MiniSearch<Chunk> {
 async function rerankChunks(
   query: string,
   candidates: Chunk[],
-  client: OpenAI
+  client: OpenAI,
+  trace?: RagTrace
 ): Promise<Chunk[]> {
   if (candidates.length === 0) return []
 
@@ -275,6 +281,7 @@ Ranked indices:`
       ]
     })
 
+    trace?.recordUsage('rerank', response.usage)
     const content = response.choices[0]?.message?.content?.trim() ?? ''
     
     // Extract JSON array from response
@@ -303,6 +310,7 @@ Ranked indices:`
     // Add any chunks that weren't ranked (shouldn't happen, but defensive)
     const rankedSet = new Set(validIndices)
     const unranked = candidates.filter((_, idx) => !rankedSet.has(idx))
+    trace?.markReranked()
     
     if (process.env.NODE_ENV === 'development') {
       console.log('[ask] Re-ranked order:', reranked.map(c => c.slug).slice(0, 5).join(', '))
@@ -322,7 +330,8 @@ async function selectChunks(
   queryEmbedding: number[],
   chunks: Chunk[],
   client: OpenAI,
-  extractedTags: string[] = []
+  extractedTags: string[] = [],
+  trace?: RagTrace
 ): Promise<Chunk[]> {
   // Merge LLM-extracted tags with regex-extracted tags
   const regexTags = extractQueryTags(query)
@@ -449,6 +458,8 @@ async function selectChunks(
     seenSlugs.add(r.chunk.slug)
     return true
   }).slice(0, candidateCount)
+  trace?.setCandidateCount(deduplicated.length)
+  const hybridInfo = new Map(deduplicated.map(r => [r.chunk.id, { score: r.score, sources: r.sources }]))
 
   // RE-RANKING (if enabled)
   let finalCandidates = deduplicated.map(r => r.chunk)
@@ -456,7 +467,7 @@ async function selectChunks(
     if (process.env.NODE_ENV === 'development') {
       console.log(`[ask] Re-ranking ${finalCandidates.length} candidates...`)
     }
-    finalCandidates = await rerankChunks(query, finalCandidates, client)
+    finalCandidates = await rerankChunks(query, finalCandidates, client, trace)
   }
 
   // TOKEN-BUDGET SELECTION
@@ -471,6 +482,14 @@ async function selectChunks(
     selected.push(chunk)
     used += chunkTokens
   }
+
+  trace?.setChunks(selected.map((c, i) => ({
+    chunkId: c.id,
+    slug: c.slug,
+    rank: i + 1,
+    hybridScore: hybridInfo.get(c.id)?.score,
+    sources: hybridInfo.get(c.id)?.sources,
+  })))
 
   return selected
 }
@@ -552,6 +571,16 @@ export async function POST(req: NextRequest) {
 
   const client = new OpenAI({ apiKey })
 
+  const trace = new RagTrace(sanitizeQueryText(sanitized), {
+    rewrite: RERANK_MODEL,
+    embedding: EMBEDDING_MODEL,
+    rerank: RERANK_MODEL,
+    generation: CHAT_MODEL,
+  })
+  // after() keeps the serverless invocation alive until analytics are persisted, without delaying the response.
+  let analyticsFlushed!: () => void
+  const analyticsDone = new Promise<void>(resolve => { analyticsFlushed = resolve })
+  after(() => analyticsDone)
   // Create streaming response
   const encoder = new TextEncoder()
   const stream = new ReadableStream({
@@ -569,14 +598,20 @@ export async function POST(req: NextRequest) {
 
         // Query rewriting
         sendProgress('Optimizing search query...')
-        const { rewritten: queryForSearch, tags: extractedTags } = await rewriteQuery(sanitized, client)
+        const { rewritten: queryForSearch, tags: extractedTags } = await trace.time(
+          'rewriteMs',
+          () => rewriteQuery(sanitized, client, trace)
+        )
 
         // Embedding
         sendProgress('Searching blog posts...')
-        const embeddingRes = await client.embeddings.create({
-          model: EMBEDDING_MODEL,
-          input: queryForSearch,
-        })
+        const embeddingRes = await trace.time('embeddingMs', () =>
+          client.embeddings.create({
+            model: EMBEDDING_MODEL,
+            input: queryForSearch,
+          })
+        )
+        trace.recordUsage('embedding', embeddingRes.usage)
         const queryEmbedding = embeddingRes.data[0].embedding
 
         // Re-ranking
@@ -584,12 +619,15 @@ export async function POST(req: NextRequest) {
           sendProgress('Analyzing relevance...')
         }
         
-        const selectedChunks = await selectChunks(
-          queryForSearch,
-          queryEmbedding,
-          store.chunks,
-          client,
-          extractedTags
+        const selectedChunks = await trace.time('searchMs', () =>
+          selectChunks(
+            queryForSearch,
+            queryEmbedding,
+            store.chunks,
+            client,
+            extractedTags,
+            trace
+          )
         )
 
         if (process.env.NODE_ENV === 'development') {
@@ -612,35 +650,42 @@ export async function POST(req: NextRequest) {
           console.log('[ask] system prompt tail:', JSON.stringify(systemPrompt.slice(-80)))
         }
 
-        const chatStream = await client.chat.completions.create({
-          model: CHAT_MODEL,
-          temperature: TEMPERATURE,
-          max_tokens: RESPONSE_MAX_TOKENS,
-          stream: true,
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: buildUserPrompt(sanitized, selectedChunks) },
-          ],
-        })
+        await trace.time('generationMs', async () => {
+          const chatStream = await client.chat.completions.create({
+            model: CHAT_MODEL,
+            temperature: TEMPERATURE,
+            max_tokens: RESPONSE_MAX_TOKENS,
+            stream: true,
+            stream_options: { include_usage: true },
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: buildUserPrompt(sanitized, selectedChunks) },
+            ],
+          })
 
-        // Stream the response
-        for await (const chunk of chatStream) {
-          const content = chunk.choices[0]?.delta?.content
-          if (content) {
-            sendContent(content)
+          // Stream the response
+          for await (const chunk of chatStream) {
+            const content = chunk.choices[0]?.delta?.content
+            if (content) {
+              sendContent(content)
+            }
+            if (chunk.usage) trace.recordUsage('generation', chunk.usage)
           }
-        }
+        })
 
         // Signal completion
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'done' })}\n\n`))
         controller.close()
       } catch (error) {
+        trace.fail(error)
         console.error('[ask] streaming error:', error)
         const errorMessage = error instanceof Error ? error.message : 'An error occurred'
         controller.enqueue(
           encoder.encode(`data: ${JSON.stringify({ type: 'error', error: errorMessage })}\n\n`)
         )
         controller.close()
+      } finally {
+        void flushTrace(trace).finally(() => analyticsFlushed())
       }
     },
   })

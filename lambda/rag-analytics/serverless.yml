@@ -1,0 +1,153 @@
+service: george-blog-rag-analytics
+
+useDotenv: true
+
+provider:
+  name: aws
+  runtime: nodejs20.x
+  region: ${opt:region, 'ap-southeast-2'}
+  stage: ${opt:stage, 'prod'}
+  apiGateway:
+    apiKeys:
+      - name: rag-analytics-${sls:stage}
+        value: ${env:RAG_ANALYTICS_API_KEY}
+    usagePlan:
+      throttle:
+        burstLimit: 20
+        rateLimit: 10
+  environment:
+    TABLE_NAME: !Ref RagAnalyticsTable
+    RAG_ANALYTICS_API_KEY: ${env:RAG_ANALYTICS_API_KEY}
+    RETENTION_DAYS: ${env:RAG_ANALYTICS_RETENTION_DAYS, '30'}
+
+plugins:
+  - serverless-esbuild
+
+custom:
+  esbuild:
+    bundle: true
+    minify: false
+    sourcemap: true
+    platform: node
+    target: node20
+    exclude:
+      - '@aws-sdk/*'
+
+package:
+  individually: true
+
+functions:
+  ingest:
+    handler: ingest.handler
+    description: Persist one RAG query analytics record (write-only)
+    role: IngestRole
+    timeout: 10
+    events:
+      - http:
+          path: /rag-analytics/queries
+          method: post
+          private: true
+
+  list:
+    handler: list.handler
+    description: Paginated RAG query history and aggregate summary (read-only)
+    role: ReadRole
+    timeout: 20
+    events:
+      - http:
+          path: /rag-analytics/queries
+          method: get
+          private: true
+      - http:
+          path: /rag-analytics/summary
+          method: get
+          private: true
+
+  detail:
+    handler: detail.handler
+    description: Fetch one RAG query analytics record by id (read-only)
+    role: ReadRole
+    timeout: 10
+    events:
+      - http:
+          path: /rag-analytics/queries/{queryId}
+          method: get
+          private: true
+
+resources:
+  Resources:
+    RagAnalyticsTable:
+      Type: AWS::DynamoDB::Table
+      DeletionPolicy: Retain
+      UpdateReplacePolicy: Retain
+      Properties:
+        TableName: blog-rag-analytics
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: pk
+            AttributeType: S
+          - AttributeName: sk
+            AttributeType: S
+          - AttributeName: queryId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: pk
+            KeyType: HASH
+          - AttributeName: sk
+            KeyType: RANGE
+        GlobalSecondaryIndexes:
+          - IndexName: byQueryId
+            KeySchema:
+              - AttributeName: queryId
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+        TimeToLiveSpecification:
+          AttributeName: expiresAt
+          Enabled: true
+
+    IngestRole:
+      Type: AWS::IAM::Role
+      Properties:
+        AssumeRolePolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service: lambda.amazonaws.com
+              Action: sts:AssumeRole
+        ManagedPolicyArns:
+          - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        Policies:
+          - PolicyName: put-analytics-record
+            PolicyDocument:
+              Version: '2012-10-17'
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - dynamodb:PutItem
+                  Resource: !GetAtt RagAnalyticsTable.Arn
+
+    ReadRole:
+      Type: AWS::IAM::Role
+      Properties:
+        AssumeRolePolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service: lambda.amazonaws.com
+              Action: sts:AssumeRole
+        ManagedPolicyArns:
+          - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        Policies:
+          - PolicyName: query-analytics-records
+            PolicyDocument:
+              Version: '2012-10-17'
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - dynamodb:Query
+                  Resource:
+                    - !GetAtt RagAnalyticsTable.Arn
+                    - !Sub '${RagAnalyticsTable.Arn}/index/byQueryId'
