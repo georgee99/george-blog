@@ -8,6 +8,7 @@ Update: The blog now contains AI
 ## Contents
 
 - [Admin area](#admin-area-admin)
+- [Comment and guestbook moderation](#comment-and-guestbook-moderation)
 - [RAG analytics](#rag-analytics)
 - [Environment variables](#environment-variables)
 - [AWS deployment](#aws-deployment)
@@ -18,12 +19,33 @@ Update: The blog now contains AI
 
 ## Admin area (`/admin`)
 
-A private, single-administrator dashboard for the RAG search. The public blog and `/api/ask` need no sign-in.
+A private, single-administrator area for blog management. The public blog and `/api/ask` need no sign-in.
 
 - **Auth:** Auth.js (Google OAuth, signed JWT cookie sessions, 8h expiry). Only the Google account whose stable `sub` equals `ADMIN_GOOGLE_SUB` is authorised (never the email alone). If `ADMIN_GOOGLE_SUB` is unset, nobody can sign in.
 - **Protection is enforced on the server in two layers:** admin pages check the session, and every admin API handler independently calls `requireAdminApi()` (`src/lib/admin-auth.ts`): 401 when signed out, 403 for any other account. New admin APIs must follow this rule.
-- **Pages:** `/admin` (overview, charts, filters, recent queries) and `/admin/queries/<id>` (query detail). Signed-out visitors are sent to `/admin/login`.
-- **Admin APIs:** `/api/admin/session`, `/api/admin/rag/summary`, `/api/admin/rag/queries`, `/api/admin/rag/queries/<id>`. They proxy to the AWS analytics API; the AWS API key never reaches the browser.
+- **Pages:** `/admin` (section tiles), `/admin/rag` (analytics overview, charts, filters, recent queries), `/admin/queries/<id>` (query detail), and `/admin/moderation` (comments and guestbook). Signed-out visitors are sent to `/admin/login`. Existing `/admin` links with analytics filters redirect to `/admin/rag`.
+- **Admin APIs:** `/api/admin/session`, `/api/admin/rag/summary`, `/api/admin/rag/queries`, `/api/admin/rag/queries/<id>`, and `/api/admin/moderation`. They proxy to AWS from the server; AWS API keys never reach the browser.
+
+## Comment and guestbook moderation
+
+The guestbook and blog comments use the same comments table. Guestbook entries have `postSlug = guestbook`; other slugs are treated as blog comments. The table uses `(postSlug, commentId)` as its partition and sort keys. A comment ID is an ISO timestamp followed by `#` and a UUID. Public submissions continue to appear immediately; there is no approval queue.
+
+On `/admin/moderation`, filter by entry type and by the entry's own visible/hidden setting. Hiding sets `isHidden` to `true`; restoring removes it. Missing `isHidden` means visible, so existing records require no migration. Hiding a parent also hides its replies from public responses without changing the replies' own settings. Restoring a parent does not restore replies hidden individually. The list therefore labels and filters by the entry's **own** setting: a reply labelled visible can still be suppressed by a hidden parent.
+
+Permanent deletion requires confirmation. An entry with replies cannot be deleted until its replies are deleted, including hidden replies. Each new reply atomically increments a version on its parent; deletion checks that version after looking for replies, preventing a concurrent new reply from being orphaned by deletion. A reply to a parent that no longer exists now receives a 409 error instead of creating an orphan. Otherwise submission behavior is unchanged. This guarantee assumes all writers use the updated Lambda; older Lambda deployments and direct table writes bypass it.
+
+The admin list scans the existing table in pages of up to 30 **evaluated** items, then applies type/status filters. An empty page can still have a Next button. Results are ordered newest first **within each page only**, not globally; DynamoDB Scan does not provide global chronological ordering. Pagination is not a snapshot, so concurrent writes can affect results. Scan filters do not reduce read capacity consumed, and listing will become slower and more expensive as the table grows. The public comments query follows all DynamoDB pages and uses strongly consistent reads to exclude hidden entries; this increases read cost and large partitions may eventually require a paginated public API.
+
+Moderation uses a new private API Gateway method and a dedicated Lambda role with scan, query, get, update and delete permissions on the existing table. The Next.js route checks the Auth.js admin session on every request; mutations also check the request origin. The AWS endpoint requires a separate `MODERATION_API_KEY` at API Gateway and verifies it again in the Lambda. The key is a shared credential, not an individual administrator identity: keep it in server-side environment variables and deployment secrets, restrict access to Lambda configuration and CloudFormation templates, and rotate it if exposed. Admin and public responses are not cached. The feature does not maintain an audit log or provide an undo for permanent deletion; verify backups/PITR before deleting.
+
+### Deploying moderation
+
+1. Generate a dedicated random key, e.g. `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`. Set `MODERATION_API_KEY` in the GitHub repository secrets for the comments Lambda workflow and in the Vercel server environment. For local Serverless deployment, put it in `.env.local` along with the existing `DYNAMODB_TABLE_NAME` and `SNS_TOPIC_ARN`. Do not reuse the public comments key or prefix this key with `NEXT_PUBLIC_`.
+2. Deploy `lambda/create-comment/serverless.yml` using the existing workflow or `npm run deploy` from `lambda/create-comment`. The deployment identity needs permission to manage the additional IAM role, API key and usage plan. Set Vercel `MODERATION_API_URL` to the deployed service URL ending in `/moderation`, and redeploy Vercel. Deploy the Lambda first so public reads filter hidden entries before exposing admin controls.
+3. Before and after deployment, verify the existing public comments API key and its externally managed usage plan still work. At inspection time, deployed `GET /comments` and `POST /comments` required an API key, while this requirement was missing from the old checked-in configuration; it is now declared in Serverless. The existing public usage plan and key are not managed by this stack. The new moderation key has its own managed usage plan. Verify that deploying the stack retains the existing association and does not interrupt public reads or submissions. The existing deployed `/reactions` method did not require a key; moderation does not rely on that method for authorization.
+4. With an authorized admin account, verify both filters, pagination (including an empty filtered page with a continuation), hide/restore, independently hidden replies, deletion confirmation and the parent-with-replies error. Check signed-out admin access and an invalid moderation API key are rejected. Verify public comments and guestbook reads and new submissions still work, and that hidden entries and replies of hidden parents are absent. Do not use production entries for destructive tests unless intended.
+
+The comments table is referenced by name rather than created by this stack. During the initial inspection, the deployed `blog-comments` table was active, on-demand, had the expected composite key, and had no GSI. Confirm these properties and the active API Gateway configuration again in the target account and stage before deployment. `MODERATION_API_URL` and `MODERATION_API_KEY` are required for the admin feature; without them it fails closed and displays an error. For key rotation, update the deployment secret and deploy the AWS stack, then update Vercel and redeploy; moderation is unavailable until both sides match.
 
 ## RAG analytics
 
@@ -46,7 +68,7 @@ Records are sent to AWS from `after()` once the response stream has finished, wi
 
 ```
 /api/ask (Vercel) --after()--> API Gateway (API key) --> ingest Lambda ---> DynamoDB
-/admin   (Vercel, session)  --> API Gateway (API key) --> list / detail Lambdas --> DynamoDB
+/admin/rag (Vercel, session) --> API Gateway (API key) --> list / detail Lambdas --> DynamoDB
 ```
 
 Infrastructure is defined in `lambda/rag-analytics/serverless.yml` (Serverless Framework, `ap-southeast-2`):
@@ -75,6 +97,8 @@ The ingest Lambda validates every field (whitelist, type and range checks, 32KB 
 | `ADMIN_GOOGLE_SUB` | yes | Stable Google account id (`sub`) of the single administrator |
 | `RAG_ANALYTICS_API_URL` | yes | API base URL, ending `/rag-analytics` (no trailing `/queries`) |
 | `RAG_ANALYTICS_API_KEY` | yes | Shared secret for the analytics API |
+| `MODERATION_API_URL` | moderation | Comments service URL ending in `/moderation` |
+| `MODERATION_API_KEY` | moderation | Dedicated server-to-server moderation API key |
 | `RAG_MODEL_PRICING_JSON` | no | Price override, USD per 1M tokens, e.g. `{"gpt-4o-mini":{"inputPerMTok":0.15,"outputPerMTok":0.6}}` |
 
 None of these may be prefixed with `NEXT_PUBLIC_`. Set the same values in `.env.local` for local development (`.env*` is git-ignored).
@@ -157,7 +181,7 @@ After deploying, on `https://georgeelz.blog`:
 - [ ] `/admin` while signed out redirects to the private-area sign-in page; `/api/admin/session` returns 401
 - [ ] Signing in with the admin Google account opens the dashboard; **Sign out** returns you to the sign-in page and `/admin` is protected again
 - [ ] Signing in with any other Google account is rejected (use a second account or an incognito window)
-- [ ] After asking a question, a new row appears in the dashboard (try 24h, then clear the date/status filters), and its detail page shows timings, tokens, cost and ranked chunks
+- [ ] After asking a question, a new row appears in the RAG analytics dashboard (try 24h, then clear the date/status filters), and its detail page shows timings, tokens, cost and ranked chunks
 - [ ] The row's DynamoDB item has `expiresAt` roughly 30 days ahead
 - [ ] A failing question path still shows up as a failed row (optional)
 - [ ] Vercel function logs show no `[rag-analytics] persist failed` errors
