@@ -31,71 +31,148 @@ interface Key {
   commentId: string;
 }
 
-function validKey(value: unknown): value is Key {
+function validKey(value: unknown): value is Key & Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
   const key = value as Record<string, unknown>;
   return typeof key.postSlug === 'string' && key.postSlug.trim() !== '' && Buffer.byteLength(key.postSlug) <= 2048 &&
     typeof key.commentId === 'string' && key.commentId.trim() !== '' && Buffer.byteLength(key.commentId) <= 1024;
 }
 
-function decodeCursor(cursor: string): Key | undefined {
+type SortOrder = 'newest' | 'oldest';
+
+interface SortKey extends Key {
+  timestamp: number;
+}
+
+interface ListCursor extends SortKey {
+  version: 1;
+  type: string;
+  status: string;
+  sort: SortOrder;
+  blogsHash?: string;
+}
+
+interface ListItem extends SortKey {
+  author: string;
+  content: string;
+  createdAt: string;
+  parentId?: string;
+  isHidden: boolean;
+}
+
+function decodeCursor(cursor: string): ListCursor | undefined {
   if (cursor.length > 5000 || !/^[A-Za-z0-9_-]+$/.test(cursor)) return undefined;
   try {
     const key: unknown = JSON.parse(Buffer.from(cursor, 'base64url').toString('utf8'));
-    return validKey(key) ? { postSlug: key.postSlug, commentId: key.commentId } : undefined;
+    if (!validKey(key)) return undefined;
+    const data = key;
+    if (data.version !== 1 || typeof data.timestamp !== 'number' || !Number.isFinite(data.timestamp) ||
+        typeof data.type !== 'string' || typeof data.status !== 'string' ||
+        (data.sort !== 'newest' && data.sort !== 'oldest') ||
+        (data.blogsHash !== undefined && (typeof data.blogsHash !== 'string' || !/^[a-f0-9]{64}$/.test(data.blogsHash)))) return undefined;
+    return {
+      version: 1, postSlug: key.postSlug, commentId: key.commentId, timestamp: data.timestamp,
+      type: data.type, status: data.status, sort: data.sort,
+      ...(data.blogsHash ? { blogsHash: data.blogsHash } : {}),
+    };
   } catch {
     return undefined;
   }
+}
+
+function compareKeys(a: SortKey, b: SortKey, sort: SortOrder): number {
+  const compareString = (left: string, right: string) => left < right ? -1 : left > right ? 1 : 0;
+  const result = Math.sign(a.timestamp - b.timestamp) ||
+    compareString(a.postSlug, b.postSlug) || compareString(a.commentId, b.commentId);
+  return sort === 'oldest' ? result : -result;
 }
 
 async function list(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
   const params = event.queryStringParameters ?? {};
   const type = params.type ?? 'all';
   const status = params.status ?? 'all';
-  if (!['all', 'blog', 'guestbook'].includes(type) || !['all', 'visible', 'hidden'].includes(status)) {
+  const sort = params.sort ?? 'newest';
+  if (!['all', 'blog', 'guestbook'].includes(type) || !['all', 'visible', 'hidden'].includes(status) ||
+      (sort !== 'newest' && sort !== 'oldest')) {
     return json(400, { error: 'Invalid moderation filter.' });
   }
+  let blogs: string[] = [];
+  if (params.blogs !== undefined) {
+    try {
+      const parsed: unknown = JSON.parse(params.blogs);
+      if (!Array.isArray(parsed) || parsed.some((slug) => typeof slug !== 'string' ||
+          !slug.trim() || slug === 'guestbook' || Buffer.byteLength(slug) > 2048)) {
+        return json(400, { error: 'Invalid blog filter.' });
+      }
+      blogs = [...new Set(parsed)].sort();
+    } catch {
+      return json(400, { error: 'Invalid blog filter.' });
+    }
+  }
+  const blogSet = new Set(blogs);
+  const blogsHash = blogs.length ? createHash('sha256').update(JSON.stringify(blogs)).digest('hex') : undefined;
   const cursor = params.cursor ? decodeCursor(params.cursor) : undefined;
-  if (params.cursor && !cursor) return json(400, { error: 'Invalid cursor.' });
-
-  const filters: string[] = [];
-  const values: Record<string, unknown> = {};
-  if (type !== 'all') {
-    filters.push(type === 'guestbook' ? 'postSlug = :guestbook' : 'postSlug <> :guestbook');
-    values[':guestbook'] = 'guestbook';
-  }
-  if (status === 'hidden') {
-    filters.push('isHidden = :hidden');
-    values[':hidden'] = true;
-  } else if (status === 'visible') {
-    filters.push('(attribute_not_exists(isHidden) OR isHidden = :visible)');
-    values[':visible'] = false;
+  if (params.cursor && (!cursor || cursor.type !== type || cursor.status !== status ||
+      cursor.sort !== sort || cursor.blogsHash !== blogsHash)) {
+    return json(400, { error: 'Invalid cursor.' });
   }
 
-  const result = await db.send(new ScanCommand({
-    TableName: tableName(),
-    Limit: 30,
-    ConsistentRead: true,
-    ExclusiveStartKey: cursor,
-    ...(filters.length ? { FilterExpression: filters.join(' AND '), ExpressionAttributeValues: values } : {}),
-    ProjectionExpression: '#slug, #id, #author, #content, #created, #parent, #hidden',
-    ExpressionAttributeNames: {
-      '#slug': 'postSlug', '#id': 'commentId', '#author': 'author', '#content': 'content',
-      '#created': 'createdAt', '#parent': 'parentId', '#hidden': 'isHidden',
-    },
-  }));
-  const items = (result.Items ?? []).map((item) => ({
-    postSlug: item.postSlug,
-    commentId: item.commentId,
-    author: item.author,
-    content: item.content,
-    createdAt: item.createdAt,
-    ...(item.parentId ? { parentId: item.parentId } : {}),
-    isHidden: item.isHidden === true,
-  })).sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+  const pageSize = 30;
+  const items: ListItem[] = [];
+  const availableBlogs = new Set<string>();
+  let scanKey: Record<string, unknown> | undefined;
+  const signal = AbortSignal.timeout(16_000);
+  do {
+    const result = await db.send(new ScanCommand({
+      TableName: tableName(),
+      ConsistentRead: true,
+      ExclusiveStartKey: scanKey,
+      ProjectionExpression: '#slug, #id, #author, #content, #created, #parent, #hidden',
+      ExpressionAttributeNames: {
+        '#slug': 'postSlug', '#id': 'commentId', '#author': 'author', '#content': 'content',
+        '#created': 'createdAt', '#parent': 'parentId', '#hidden': 'isHidden',
+      },
+    }), { abortSignal: signal });
+    for (const raw of result.Items ?? []) {
+      if (!validKey(raw)) throw new Error('Comments table contains an entry with invalid keys.');
+      if (raw.postSlug !== 'guestbook') availableBlogs.add(raw.postSlug);
+      if ((type === 'blog' && raw.postSlug === 'guestbook') ||
+          (type === 'guestbook' && raw.postSlug !== 'guestbook') ||
+          (status === 'hidden' && raw.isHidden !== true) ||
+          (status === 'visible' && raw.isHidden !== undefined && raw.isHidden !== false) ||
+          (blogSet.size > 0 && !blogSet.has(raw.postSlug))) continue;
+      if (typeof raw.author !== 'string' || typeof raw.content !== 'string' ||
+          typeof raw.createdAt !== 'string' || !Number.isFinite(Date.parse(raw.createdAt)) ||
+          (raw.parentId !== undefined && typeof raw.parentId !== 'string')) {
+        throw new Error('Comments table contains an entry with invalid fields.');
+      }
+      const item: ListItem = {
+        postSlug: raw.postSlug, commentId: raw.commentId, author: raw.author, content: raw.content,
+        createdAt: raw.createdAt, timestamp: Date.parse(raw.createdAt),
+        ...(raw.parentId ? { parentId: raw.parentId } : {}), isHidden: raw.isHidden === true,
+      };
+      if (cursor && compareKeys(item, cursor, sort) <= 0) continue;
+      const position = items.findIndex((other) => compareKeys(item, other, sort) < 0);
+      if (position === -1) {
+        if (items.length <= pageSize) items.push(item);
+      } else {
+        items.splice(position, 0, item);
+        if (items.length > pageSize + 1) items.pop();
+      }
+    }
+    scanKey = result.LastEvaluatedKey;
+  } while (scanKey);
+  const hasNext = items.length > pageSize;
+  const page = items.slice(0, pageSize);
+  const last = page[page.length - 1];
+  const nextCursor: ListCursor | undefined = hasNext && last ? {
+    version: 1, postSlug: last.postSlug, commentId: last.commentId, timestamp: last.timestamp, type, status, sort,
+    ...(blogsHash ? { blogsHash } : {}),
+  } : undefined;
   return json(200, {
-    items,
-    ...(result.LastEvaluatedKey ? { nextCursor: Buffer.from(JSON.stringify(result.LastEvaluatedKey)).toString('base64url') } : {}),
+    items: page.map(({ timestamp: _timestamp, ...item }) => item),
+    availableBlogs: [...availableBlogs].sort(),
+    ...(nextCursor ? { nextCursor: Buffer.from(JSON.stringify(nextCursor)).toString('base64url') } : {}),
   });
 }
 

@@ -12,6 +12,7 @@ export interface ModerationEntry {
 
 export interface ModerationPage {
   items: ModerationEntry[]
+  availableBlogs?: string[]
   nextCursor?: string
 }
 
