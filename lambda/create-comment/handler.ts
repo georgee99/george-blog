@@ -1,6 +1,6 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { validateCommentInput } from './validate';
-import { insertComment, sanitizeLocation, sanitizeNetwork } from './db';
+import { insertComment, ParentNotFoundError, sanitizeLocation, sanitizeNetwork } from './db';
 import { publishCommentCreated } from './sns';
 
 function json(statusCode: number, body: object): APIGatewayProxyResult {
@@ -43,6 +43,7 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
     comment = await insertComment(postSlug, authorName, body, parentId, ipHash, userAgent, clientId, location, network);
     console.log(`Comment created with ID ${comment.commentId} for post ${postSlug}`);
   } catch (err) {
+    if (err instanceof ParentNotFoundError) return json(409, { error: err.message });
     console.error('DB insert failed:', err);
     return json(500, { error: 'Failed to save comment' });
   }

@@ -5,6 +5,14 @@ provider:
   runtime: nodejs20.x
   region: ${opt:region, 'ap-southeast-2'}
   stage: ${opt:stage, 'prod'}
+  apiGateway:
+    apiKeys:
+      - name: comments-moderation-${sls:stage}
+        value: ${env:MODERATION_API_KEY}
+    usagePlan:
+      throttle:
+        burstLimit: 20
+        rateLimit: 10
   environment:
     DYNAMODB_TABLE_NAME: ${env:DYNAMODB_TABLE_NAME}
     SNS_TOPIC_ARN: ${env:SNS_TOPIC_ARN}
@@ -19,6 +27,7 @@ provider:
           Action:
             - dynamodb:PutItem
             - dynamodb:Query
+            - dynamodb:GetItem
             - dynamodb:UpdateItem
           Resource: !Sub "arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${env:DYNAMODB_TABLE_NAME}"
 
@@ -47,6 +56,7 @@ functions:
       - http:
           path: /comments
           method: get
+          private: true
           cors: true
 
   createComment:
@@ -57,6 +67,7 @@ functions:
       - http:
           path: /comments
           method: post
+          private: true
           cors: true
 
   addReaction:
@@ -68,3 +79,48 @@ functions:
           path: /reactions
           method: post
           cors: true
+
+  moderation:
+    handler: moderation.handler
+    description: List and moderate comments and guestbook entries
+    role: ModerationRole
+    timeout: 20
+    environment:
+      MODERATION_API_KEY: ${env:MODERATION_API_KEY}
+    events:
+      - http:
+          path: /moderation
+          method: get
+          private: true
+      - http:
+          path: /moderation
+          method: post
+          private: true
+
+resources:
+  Resources:
+    ModerationRole:
+      Type: AWS::IAM::Role
+      Properties:
+        AssumeRolePolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service: lambda.amazonaws.com
+              Action: sts:AssumeRole
+        ManagedPolicyArns:
+          - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        Policies:
+          - PolicyName: moderate-comments
+            PolicyDocument:
+              Version: '2012-10-17'
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - dynamodb:Scan
+                    - dynamodb:Query
+                    - dynamodb:GetItem
+                    - dynamodb:UpdateItem
+                    - dynamodb:DeleteItem
+                  Resource: !Sub "arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${env:DYNAMODB_TABLE_NAME}"

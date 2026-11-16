@@ -1,5 +1,5 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, PutCommand, QueryCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocumentClient, GetCommand, PutCommand, QueryCommand, TransactWriteCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import { randomUUID } from 'crypto';
 
 let docClient: DynamoDBDocumentClient | null = null;
@@ -88,6 +88,8 @@ export interface DynamoComment {
   createdAt: string;
   parentId?: string;
   reactions?: Record<string, number>;
+  isHidden?: boolean;
+  replyVersion?: number;
   ipHash?: string;
   location?: CommentLocation;
   network?: CommentNetwork;
@@ -96,16 +98,24 @@ export interface DynamoComment {
 }
 
 export async function getComments(postSlug: string): Promise<DynamoComment[]> {
-  const result = await getDocClient().send(
-    new QueryCommand({
+  const comments: DynamoComment[] = [];
+  let key: Record<string, unknown> | undefined;
+  do {
+    const result = await getDocClient().send(new QueryCommand({
       TableName: getTableName(),
       KeyConditionExpression: 'postSlug = :slug',
       ExpressionAttributeValues: { ':slug': postSlug },
-      ScanIndexForward: false, 
-    }),
-  );
-  return (result.Items ?? []) as DynamoComment[];
+      ScanIndexForward: false,
+      ConsistentRead: true,
+      ExclusiveStartKey: key,
+    }));
+    comments.push(...(result.Items ?? []) as DynamoComment[]);
+    key = result.LastEvaluatedKey;
+  } while (key);
+  return comments;
 }
+
+export class ParentNotFoundError extends Error {}
 
 export async function insertComment(
   postSlug: string,
@@ -136,12 +146,36 @@ export async function insertComment(
     ...(clientId ? { clientId } : {}),
   };
 
-  await getDocClient().send(
-    new PutCommand({
-      TableName: getTableName(),
-      Item: item,
-    }),
-  );
+  const client = getDocClient();
+  const TableName = getTableName();
+  if (parentId) {
+    try {
+      await client.send(new TransactWriteCommand({
+        TransactItems: [
+          { Put: { TableName, Item: item } },
+          {
+            Update: {
+              TableName,
+              Key: { postSlug, commentId: parentId },
+              ConditionExpression: 'attribute_exists(postSlug)',
+              UpdateExpression: 'SET replyVersion = if_not_exists(replyVersion, :zero) + :one',
+              ExpressionAttributeValues: { ':zero': 0, ':one': 1 },
+            },
+          },
+        ],
+      }));
+    } catch (err) {
+      if (err instanceof Error && err.name === 'TransactionCanceledException') {
+        const parent = await client.send(new GetCommand({
+          TableName, Key: { postSlug, commentId: parentId }, ConsistentRead: true,
+        }));
+        if (!parent.Item) throw new ParentNotFoundError('The comment being replied to no longer exists.');
+      }
+      throw err;
+    }
+  } else {
+    await client.send(new PutCommand({ TableName, Item: item }));
+  }
 
   return {
     postSlug: item.postSlug,
@@ -167,6 +201,7 @@ export async function addReaction(
     new UpdateCommand({
       TableName,
       Key: { postSlug, commentId },
+      ConditionExpression: 'attribute_exists(postSlug)',
       UpdateExpression: 'SET reactions = if_not_exists(reactions, :empty)',
       ExpressionAttributeValues: { ':empty': {} },
     }),
@@ -177,6 +212,7 @@ export async function addReaction(
     new UpdateCommand({
       TableName,
       Key: { postSlug, commentId },
+      ConditionExpression: 'attribute_exists(postSlug)',
       UpdateExpression: 'SET reactions.#emoji = if_not_exists(reactions.#emoji, :zero) + :one',
       ExpressionAttributeNames: { '#emoji': emoji },
       ExpressionAttributeValues: { ':zero': 0, ':one': 1 },

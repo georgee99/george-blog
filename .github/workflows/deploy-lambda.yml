@@ -46,3 +46,4 @@ jobs:
         env:
           DYNAMODB_TABLE_NAME: ${{ secrets.DYNAMODB_TABLE_NAME }}
           SNS_TOPIC_ARN: ${{ secrets.SNS_TOPIC_ARN }}
+          MODERATION_API_KEY: ${{ secrets.MODERATION_API_KEY }}

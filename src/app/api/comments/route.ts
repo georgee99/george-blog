@@ -124,7 +124,9 @@ export async function GET(req: NextRequest) {
   if (isDev) {
     const postSlug = req.nextUrl.searchParams.get('postSlug')
     console.debug('Using seed comment data in development');
-    return NextResponse.json(postSlug === 'guestbook' ? seedGuestbookData : seedCommentData)
+    return NextResponse.json(postSlug === 'guestbook' ? seedGuestbookData : seedCommentData, {
+      headers: { 'Cache-Control': 'no-store' },
+    })
   }
   const lambdaUrl = process.env.COMMENTS_API_URL
   if (!lambdaUrl) {
@@ -143,7 +145,7 @@ export async function GET(req: NextRequest) {
   })
 
   const data = await lambdaRes.json().catch(() => ({}))
-  return NextResponse.json(data, { status: lambdaRes.status })
+  return NextResponse.json(data, { status: lambdaRes.status, headers: { 'Cache-Control': 'no-store' } })
 }
 
 export async function POST(req: NextRequest) {

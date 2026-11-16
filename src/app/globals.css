@@ -44,6 +44,15 @@ body.spiderman-mode * {
   font-weight: 700 !important;
 }
 
+body.spiderman-mode .moderation-filter,
+body.spiderman-mode .moderation-filter option {
+  background-color: #171717;
+}
+
+body.spiderman-mode .moderation-filter {
+  color-scheme: dark;
+}
+
 /* Cursive font scoped to blog post/article content only */
 body.spiderman-mode article,
 body.spiderman-mode article *,
