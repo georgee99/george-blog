@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
   if (denied) return denied
 
   const params = new URLSearchParams()
-  for (const name of ['type', 'status', 'cursor']) {
+  for (const name of ['type', 'status', 'sort', 'blogs', 'cursor']) {
     const value = req.nextUrl.searchParams.get(name)
     if (value !== null) params.set(name, value)
   }
