@@ -102,16 +102,22 @@ jobs:
 
       - name: Invoke notification Lambda
         if: steps.post.outputs.should_notify == 'true'
+        env:
+          POST_SLUG: ${{ steps.post.outputs.slug }}
         run: |
-          aws lambda invoke \
+          jq --arg campaignId "github-${GITHUB_RUN_ID}" --arg postSlug "$POST_SLUG" \
+            '. + {campaignId: $campaignId, postSlug: $postSlug}' \
+            scripts/generate-email/email-test.json > notify-payload.json
+          function_error=$(aws lambda invoke \
             --function-name george-blog-subscribe-prod-notifySubscribers \
             --invocation-type RequestResponse \
-            --payload fileb://scripts/generate-email/email-test.json \
-            response.json
+            --payload fileb://notify-payload.json \
+            --query FunctionError --output text \
+            response.json)
 
-          cat response.json
-
-          if jq -e '.FunctionError' response.json > /dev/null; then
+          if [[ "$function_error" != "None" ]]; then
             echo "The notification Lambda returned an error."
+            cat response.json
             exit 1
           fi
+          echo "Notification Lambda completed."

@@ -10,10 +10,10 @@
 
 import fs from 'fs'
 import path from 'path'
-import crypto from 'crypto'
 import { fileURLToPath } from 'url'
 import matter from 'gray-matter'
 import OpenAI from 'openai'
+import { EMBEDDING_MODEL, embeddingContentHash } from '../../src/lib/embedding-hash'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -21,7 +21,6 @@ const __dirname = path.dirname(__filename)
 // Config
 const POSTS_DIR = path.join(__dirname, '../../content/posts')
 const OUTPUT_PATH = path.join(__dirname, '../../data/embeddings.json')
-const EMBEDDING_MODEL = 'text-embedding-3-small' // cheapest / fastest OpenAI model
 const CHUNK_TOKENS = 500  
 const CHUNK_OVERLAP = 75  
 const CHARS_PER_TOKEN = 4
@@ -52,10 +51,6 @@ interface Section {
 }
 
 // Helpers
-
-function sha256(content: string): string {
-  return crypto.createHash('sha256').update(content).digest('hex')
-}
 
 function estimateTokens(text: string): number {
   return Math.ceil(text.length / CHARS_PER_TOKEN)
@@ -237,7 +232,7 @@ async function main() {
     if (data.published === false) continue  // skip unpublished
     currentSlugs.add(slug)
 
-    const hash = sha256(raw)
+    const hash = embeddingContentHash(raw)
     if (store.hashes[slug] === hash) {
       console.log(`  skip  ${slug} (unchanged)`)
       continue
@@ -306,7 +301,7 @@ async function main() {
         })
       })
 
-      store.hashes[slug] = sha256(raw)
+      store.hashes[slug] = embeddingContentHash(raw)
     }
   }
 

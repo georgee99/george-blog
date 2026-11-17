@@ -17,6 +17,26 @@ const sections = [
     title: 'Comment moderation',
     description: 'Manage blog comments and guestbook entries.',
   },
+  {
+    href: '/admin/rag/coverage',
+    title: 'RAG content coverage',
+    description: 'Check which posts are represented in search.',
+  },
+  {
+    href: '/admin/subscribers',
+    title: 'Subscribers',
+    description: 'View subscriber statuses and addresses.',
+  },
+  {
+    href: '/admin/newsletters',
+    title: 'Newsletter history',
+    description: 'Review newsletter send attempts.',
+  },
+  {
+    href: '/admin/health',
+    title: 'Site health',
+    description: 'Check the status of blog services.',
+  },
 ]
 
 export default async function AdminPage({

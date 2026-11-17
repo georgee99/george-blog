@@ -7,12 +7,16 @@ provider:
   runtime: nodejs20.x
   region: ${opt:region, 'ap-southeast-2'}
   stage: ${opt:stage, 'prod'}
+  apiGateway:
+    apiKeys:
+      - name: subscriber-admin-${sls:stage}
+        value: ${env:SUBSCRIBER_ADMIN_API_KEY}
+    usagePlan:
+      throttle:
+        burstLimit: 20
+        rateLimit: 10
   environment:
     SUBSCRIBERS_TABLE_NAME: ${env:SUBSCRIBERS_TABLE_NAME}
-    RESEND_API_KEY: ${env:RESEND_API_KEY}
-    RESEND_FROM_EMAIL: ${env:RESEND_FROM_EMAIL}
-    RESEND_WEBHOOK_SECRET: ${env:RESEND_WEBHOOK_SECRET}
-    SITE_BASE_URL: ${env:SITE_BASE_URL}
   iam:
     role:
       statements:
@@ -41,10 +45,28 @@ package:
   individually: true
 
 functions:
+  admin:
+    handler: admin.handler
+    description: Read-only subscriber overview for the admin application
+    role: SubscriberAdminRole
+    timeout: 25
+    environment:
+      SUBSCRIBER_ADMIN_API_KEY: ${env:SUBSCRIBER_ADMIN_API_KEY}
+      NEWSLETTER_HISTORY_TABLE_NAME: !Ref NewsletterHistoryTable
+    events:
+      - http:
+          path: /admin/subscribers
+          method: get
+          private: true
+
   subscribe:
     handler: subscribe.handler
     description: Subscribe an email address, save to DynamoDB, send confirmation email via Resend — invoked via POST /subscribe
     timeout: 10
+    environment:
+      RESEND_API_KEY: ${env:RESEND_API_KEY}
+      RESEND_FROM_EMAIL: ${env:RESEND_FROM_EMAIL}
+      SITE_BASE_URL: ${env:SITE_BASE_URL}
     events:
       - http:
           path: /subscribe
@@ -65,6 +87,8 @@ functions:
     handler: unsubscribe.handler
     description: Unsubscribe an email address via tokenised link
     timeout: 10
+    environment:
+      SITE_BASE_URL: ${env:SITE_BASE_URL}
     events:
       - http:
           path: /subscribe/unsubscribe
@@ -75,6 +99,8 @@ functions:
     handler: bounce-handler.handler
     description: Handles Resend webhook events for bounces and complaints — marks subscribers as bounced/complained in DynamoDB
     timeout: 10
+    environment:
+      RESEND_WEBHOOK_SECRET: ${env:RESEND_WEBHOOK_SECRET}
     events:
       - http:
           path: /webhook/resend
@@ -85,4 +111,86 @@ functions:
     handler: notify.handler
     description: Send an email to all confirmed subscribers — invoke manually via AWS Console Test tab
     timeout: 60
+    role: NewsletterNotifyRole
+    environment:
+      RESEND_API_KEY: ${env:RESEND_API_KEY}
+      RESEND_FROM_EMAIL: ${env:RESEND_FROM_EMAIL}
+      SITE_BASE_URL: ${env:SITE_BASE_URL}
+      NEWSLETTER_HISTORY_TABLE_NAME: !Ref NewsletterHistoryTable
 
+resources:
+  Resources:
+    NewsletterHistoryTable:
+      Type: AWS::DynamoDB::Table
+      DeletionPolicy: Retain
+      UpdateReplacePolicy: Retain
+      Properties:
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: campaignId
+            AttributeType: S
+          - AttributeName: history
+            AttributeType: S
+          - AttributeName: startedAt
+            AttributeType: S
+        KeySchema:
+          - AttributeName: campaignId
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: byStartTime
+            KeySchema:
+              - AttributeName: history
+                KeyType: HASH
+              - AttributeName: startedAt
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+
+    SubscriberAdminRole:
+      Type: AWS::IAM::Role
+      Properties:
+        AssumeRolePolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service: lambda.amazonaws.com
+              Action: sts:AssumeRole
+        ManagedPolicyArns:
+          - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        Policies:
+          - PolicyName: read-subscriber-overview
+            PolicyDocument:
+              Version: '2012-10-17'
+              Statement:
+                - Effect: Allow
+                  Action: dynamodb:Scan
+                  Resource: !Sub "arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${env:SUBSCRIBERS_TABLE_NAME}"
+                - Effect: Allow
+                  Action: dynamodb:Query
+                  Resource: !Sub '${NewsletterHistoryTable.Arn}/index/byStartTime'
+    NewsletterNotifyRole:
+      Type: AWS::IAM::Role
+      Properties:
+        AssumeRolePolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service: lambda.amazonaws.com
+              Action: sts:AssumeRole
+        ManagedPolicyArns:
+          - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        Policies:
+          - PolicyName: send-newsletter
+            PolicyDocument:
+              Version: '2012-10-17'
+              Statement:
+                - Effect: Allow
+                  Action: dynamodb:Scan
+                  Resource: !Sub "arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${env:SUBSCRIBERS_TABLE_NAME}"
+                - Effect: Allow
+                  Action:
+                    - dynamodb:PutItem
+                    - dynamodb:UpdateItem
+                  Resource: !GetAtt NewsletterHistoryTable.Arn
