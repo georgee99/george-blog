@@ -2,6 +2,7 @@
 import { DynamoDBDocumentClient, ScanCommand } from '@aws-sdk/lib-dynamodb';
 import { Resend } from 'resend';
 import { Subscriber } from './db';
+import { beginRun, updateRun } from './history';
 
 const dynamo = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -28,6 +29,8 @@ interface NotifyPayload {
   subject: string;
   body: string;
   html?: string;
+  campaignId?: string;
+  postSlug?: string;
 }
 
 async function getConfirmedSubscribers(): Promise<Subscriber[]> {
@@ -76,53 +79,85 @@ function injectUnsubscribeFooter(html: string, unsubscribeUrl: string): string {
 export const handler = async (
   event: NotifyPayload,
 ): Promise<{ sent: number; emails: string[] }> => {
-  const { subject, body, html } = event;
+  const { subject, body, html, campaignId, postSlug } = event;
 
   if (!subject || !body) {
     throw new Error('Payload must include "subject" and "body"');
   }
+  if ((campaignId !== undefined && (typeof campaignId !== 'string' || !/^[a-zA-Z0-9_-]{1,100}$/.test(campaignId))) ||
+      (postSlug !== undefined && (typeof postSlug !== 'string' || postSlug.length > 200))) {
+    throw new Error('Invalid campaignId or postSlug');
+  }
 
   const siteBaseUrl = getSiteBaseUrl();
   const from = getFromEmail();
-  const subscribers = await getConfirmedSubscribers();
-
-  if (subscribers.length === 0) {
-    console.log('No confirmed subscribers found.');
-    return { sent: 0, emails: [] };
-  }
-
-  console.log(`Sending to ${subscribers.length} confirmed subscriber(s)...`);
-
-  const BATCH_SIZE = 100;
+  const runId = await beginRun(subject, campaignId, postSlug);
+  const state: { status: 'in_progress' | 'completed' | 'failed'; total: number | null; attempted: number; accepted: number } =
+    { status: 'in_progress', total: null, attempted: 0, accepted: 0 };
   const sent: string[] = [];
+  try {
+    const subscribers = await getConfirmedSubscribers();
+    state.total = subscribers.length;
+    await updateRun(runId, state);
 
-  for (let i = 0; i < subscribers.length; i += BATCH_SIZE) {
-    const batch = subscribers.slice(i, i + BATCH_SIZE);
+    if (subscribers.length === 0) {
+      console.log('No confirmed subscribers found.');
+      state.status = 'completed';
+      await updateRun(runId, state);
+      return { sent: 0, emails: [] };
+    }
 
-    const emails = batch.map((sub) => {
-      const unsubscribeUrl = buildUnsubscribeUrl(siteBaseUrl, sub.email, sub.confirmationToken);
-      const text = `${body}\n\nUnsubscribe: ${unsubscribeUrl}`;
-      const htmlWithFooter = html ? injectUnsubscribeFooter(html, unsubscribeUrl) : undefined;
+    console.log(`Sending to ${subscribers.length} confirmed subscriber(s)...`);
 
-      return {
-        from,
-        to: sub.email,
-        subject,
-        text,
-        ...(htmlWithFooter ? { html: htmlWithFooter } : {}),
-        headers: {
-          'List-Unsubscribe': `<${unsubscribeUrl}>`,
-          'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
-        },
-      };
-    });
+    const BATCH_SIZE = 100;
+    for (let i = 0; i < subscribers.length; i += BATCH_SIZE) {
+      const batch = subscribers.slice(i, i + BATCH_SIZE);
 
-    await resend.batch.send(emails);
-    batch.forEach((sub) => {
-      sent.push(sub.email);
-      console.log(`Queued: ${sub.email}`);
-    });
+      const emails = batch.map((sub) => {
+        const unsubscribeUrl = buildUnsubscribeUrl(siteBaseUrl, sub.email, sub.confirmationToken);
+        const text = `${body}\n\nUnsubscribe: ${unsubscribeUrl}`;
+        const htmlWithFooter = html ? injectUnsubscribeFooter(html, unsubscribeUrl) : undefined;
+
+        return {
+          from,
+          to: sub.email,
+          subject,
+          text,
+          ...(htmlWithFooter ? { html: htmlWithFooter } : {}),
+          headers: {
+            'List-Unsubscribe': `<${unsubscribeUrl}>`,
+            'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+          },
+        };
+      });
+
+      state.attempted += batch.length;
+      await updateRun(runId, state);
+      const result = await resend.batch.send(emails);
+      if (result.error) {
+        console.error('Resend batch failed:', result.error.name);
+        throw new Error('Resend batch outcome is uncertain; review before retrying');
+      }
+      if (result.data.data.length <= batch.length) state.accepted += result.data.data.length;
+      await updateRun(runId, state);
+      if (result.data.data.length !== batch.length) {
+        throw new Error('Resend batch outcome is uncertain; review before retrying');
+      }
+      batch.forEach((sub) => {
+        sent.push(sub.email);
+      });
+    }
+
+    state.status = 'completed';
+    await updateRun(runId, state);
+    return { sent: sent.length, emails: sent };
+  } catch (error) {
+    state.status = 'failed';
+    try {
+      await updateRun(runId, state);
+    } catch (historyError) {
+      console.error('Failed to update newsletter history:', historyError);
+    }
+    throw error;
   }
-
-  return { sent: sent.length, emails: sent };
 };

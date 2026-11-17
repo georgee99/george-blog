@@ -143,6 +143,25 @@ Notes:
 
 ## Maintenance
 
+### Additional admin dashboards
+
+- `/admin/subscribers` displays subscriber addresses and current status counts.
+  The list uses paginated DynamoDB scans, is not chronologically sorted, and
+  counts require a full scan. Counts can change during the scan.
+- `/admin/newsletters` displays new newsletter send attempts and Resend
+  acceptance counts. It does not show confirmed deliveries or older sends.
+- `/admin/rag/coverage` compares this deployment's published posts with the
+  bundled embeddings artifact. It does not invoke OpenAI or rebuild embeddings.
+- `/admin/health` performs short, read-only checks when opened. The moderation
+  check only reports configuration, and newsletter delivery is not probed.
+
+The subscriber and newsletter pages require the subscriber stack and matching
+`SUBSCRIBER_ADMIN_API_URL` and `SUBSCRIBER_ADMIN_API_KEY` in Vercel. Deploy the
+AWS changes first, then update and redeploy the app. See
+[subscriber deployment and history notes](lambda/subscribe/README.md#subscriber-overview-and-newsletter-history)
+for configuration, IAM, retention and retry behavior. Like the existing admin
+areas, these pages require the configured Auth.js administrator.
+
 **Rotate the analytics API key**
 
 1. Generate a new key and put it in `.env.local` as `RAG_ANALYTICS_API_KEY`.
