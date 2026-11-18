@@ -82,6 +82,7 @@ export default function CatOracle({ images }: { images: CatImage[] }) {
             fill
             sizes="(max-width: 640px) 100vw, 384px"
             className="object-contain"
+            unoptimized
             priority
           />
         </div>
