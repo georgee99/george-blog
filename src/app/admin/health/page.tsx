@@ -23,6 +23,35 @@ async function analyticsHealth(): Promise<string> {
   }
 }
 
+interface NewsletterHistoryRun {
+  startedAt: string
+  status: 'in_progress' | 'completed' | 'failed'
+  attempted: number
+  accepted: number
+}
+
+async function newsletterHealth(): Promise<string> {
+  const result = await subscriberAdminRequest<{ items: NewsletterHistoryRun[] }>(
+    new URLSearchParams({ mode: 'history' }),
+    5_000,
+  )
+  if (!result.ok) return result.error
+  const latest = result.data.items[0]
+  if (!latest) return 'No recorded newsletter sends'
+
+  const accepted = `${latest.accepted}/${latest.attempted} messages accepted by Resend`
+  if (latest.status === 'completed' && latest.accepted === latest.attempted) {
+    return `Healthy — latest send completed; ${accepted}`
+  }
+  if (latest.status === 'completed') {
+    return `Warning — latest send completed partially; ${accepted}`
+  }
+  if (latest.status === 'in_progress') {
+    return `Warning — latest send is still in progress; ${accepted}`
+  }
+  return `Failed — latest send failed; ${accepted}`
+}
+
 export default async function HealthPage() {
   const session = await auth()
   if (!session?.user) redirect('/admin/login')
@@ -31,6 +60,7 @@ export default async function HealthPage() {
     subscriberAdminRequest<{ ok: boolean }>(new URLSearchParams({ mode: 'health' }), 5_000),
     analyticsHealth(),
   ])
+  const newsletter = await newsletterHealth()
   let embeddings = 'Readable'
   try {
     getRagCoverage()
@@ -45,7 +75,7 @@ export default async function HealthPage() {
     ['RAG analytics', analytics],
     ['RAG content', embeddings],
     ['Moderation service', moderation],
-    ['Newsletter delivery', 'Not checked; no email is sent'],
+    ['Newsletter delivery', newsletter],
   ]
   return (
     <div className="space-y-8">
