@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BackgroundColorPicker } from "./background-color-picker";
 import { ThemeToggle } from "./theme-toggle";
 import BionicToggle from "./bionic-toggle";
 import { siteConfig } from "@/lib/config";
@@ -35,6 +36,7 @@ export function Nav() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <BackgroundColorPicker />
           <BionicToggle />
           <ThemeToggle />
         </div>

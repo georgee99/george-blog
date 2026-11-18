@@ -5,7 +5,8 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-  --background: #ffffff;
+  --custom-background: #ffffff;
+  --background: var(--custom-background);
   --foreground: #111111;
 }
 
