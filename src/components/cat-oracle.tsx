@@ -45,7 +45,7 @@ export default function CatOracle({ images }: { images: CatImage[] }) {
         </p>
         <h1 className="text-3xl font-semibold tracking-tight">The Cat Oracle</h1>
         <p className="text-neutral-600 dark:text-neutral-400">
-          Ask the cats. They know things. Probably.
+          Ask the cats, they know things
         </p>
       </header>
 
