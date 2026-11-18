@@ -20,7 +20,7 @@ export default function MeowPage() {
   const images = filenames.map((filename) => {
     const name = filename.slice(0, -4);
     const isDuo = name.toUpperCase() === "S_M_1";
-    const label = isDuo ? "The double act" : `${name[0]} cat #${name.slice(1)}`;
+    const label = isDuo ? "The double act" : name[0].toUpperCase() === "M" ? "Mila" : "Sebastian";
 
     return {
       src: `/meow/${filename}`,
