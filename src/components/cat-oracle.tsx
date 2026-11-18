@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 const fortunes = [
   "A tiny creature will soon demand your full attention.",
@@ -48,6 +48,7 @@ export default function CatOracle({ images }: { images: CatImage[] }) {
   const [catIndex, setCatIndex] = useState(0);
   const [fortuneIndex, setFortuneIndex] = useState(0);
   const [drawCount, setDrawCount] = useState(0);
+  const meowAudio = useRef<HTMLAudioElement>(null);
   const cat = images[catIndex];
 
   function drawAgain() {
@@ -58,6 +59,12 @@ export default function CatOracle({ images }: { images: CatImage[] }) {
     }
 
     setFortuneIndex((current) => (current + 1 + Math.floor(Math.random() * (fortunes.length - 1))) % fortunes.length);
+    if ((drawCount + 1) % 2 === 0 && meowAudio.current) {
+      meowAudio.current.currentTime = 0;
+      void meowAudio.current.play().catch((error: unknown) => {
+        console.error("Could not play the cat oracle meow:", error);
+      });
+    }
     setDrawCount((count) => count + 1);
   }
 
@@ -74,6 +81,7 @@ export default function CatOracle({ images }: { images: CatImage[] }) {
       </header>
 
       <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-5 dark:border-neutral-800 dark:bg-neutral-900">
+        <audio ref={meowAudio} src="/meow/meow.mp3" preload="none" />
         <div className="relative mx-auto aspect-square w-full max-w-sm overflow-hidden rounded-xl bg-white dark:bg-neutral-950">
           <Image
             key={cat.src}
