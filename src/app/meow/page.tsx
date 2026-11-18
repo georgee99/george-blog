@@ -1,4 +1,4 @@
-import { readdirSync } from "node:fs";
+import { existsSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import type { Metadata } from "next";
 import CatOracle from "@/components/cat-oracle";
@@ -21,9 +21,14 @@ export default function MeowPage() {
     const name = filename.slice(0, -4);
     const isDuo = name.toUpperCase() === "S_M_1";
     const label = isDuo ? "The double act" : name[0].toUpperCase() === "M" ? "Mila" : "Sebastian";
+    const optimizedFilename = `${name}.webp`;
+
+    if (!existsSync(join(process.cwd(), "public", "meow", "oracle", optimizedFilename))) {
+      throw new Error(`Missing optimized cat image ${optimizedFilename}. Run npm run optimize-cat-oracle.`);
+    }
 
     return {
-      src: `/meow/${filename}`,
+      src: `/meow/oracle/${encodeURIComponent(optimizedFilename)}`,
       label,
       alt: isDuo ? "Two cats together" : `${name[0]} cat`,
     };

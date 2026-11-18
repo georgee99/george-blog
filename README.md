@@ -143,6 +143,13 @@ Notes:
 
 ## Maintenance
 
+### Cat oracle images
+
+The cat oracle uses pre-generated WebP images to avoid optimizing its PNGs on
+request. After adding or changing an M- or S-prefixed PNG in `public/meow`, run
+`npm run optimize-cat-oracle` and commit the resulting files in
+`public/meow/oracle` with the original PNGs.
+
 ### Additional admin dashboards
 
 - `/admin/subscribers` displays subscriber addresses and current status counts.
