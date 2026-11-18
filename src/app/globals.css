@@ -5,12 +5,12 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-  --background: #ffffff;
+  --background: var(--custom-background, #ffffff);
   --foreground: #111111;
 }
 
 .dark {
-  --background: #111111;
+  --background: var(--custom-background, #111111);
   --foreground: #ebebeb;
 }
 

@@ -2,6 +2,7 @@
 
 import { useTheme } from "next-themes";
 import { useSyncExternalStore } from "react";
+import { resetBackgroundColor } from "@/lib/background-color";
 
 // Track client-side mount status without triggering React Compiler warnings.
 // useSyncExternalStore returns `true` on the client and `false` during SSR.
@@ -29,7 +30,10 @@ export function ThemeToggle() {
 
   return (
     <button
-      onClick={() => setTheme(isDark ? "light" : "dark")}
+      onClick={() => {
+        resetBackgroundColor();
+        setTheme(isDark ? "light" : "dark");
+      }}
       className="flex h-8 w-8 items-center justify-center rounded-md text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 dark:hover:bg-neutral-800 dark:hover:text-neutral-100"
       aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
     >
