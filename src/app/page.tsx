@@ -58,24 +58,27 @@ export default function HomePage() {
           >
             All posts →
           </Link>
-          <div className='flex flex-row items-center mt-10 gap-4'>
+          <Link
+            href="/meow"
+            aria-label="Open the secret cat oracle"
+            title="Psst..."
+            className="group mt-10 flex flex-row items-center gap-4 rounded-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-neutral-500"
+          >
             <Image
               src="/meow/S3.png"
-              alt="meow"
+              alt=""
               width={168}
               height={16}
-              className="mt-2 mx-auto"
-              aria-hidden="true"
+              className="mx-auto transition-transform group-hover:scale-105"
             />
             <Image
               src="/meow/M2.png"
-              alt="meow"
+              alt=""
               width={168}
               height={16}
-              className="mt-2 mx-auto"
-              aria-hidden="true"
+              className="mx-auto transition-transform group-hover:scale-105"
             />
-          </div>
+          </Link>
         </section>
       )}
 
