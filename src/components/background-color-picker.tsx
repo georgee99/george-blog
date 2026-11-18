@@ -1,20 +1,26 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { useTheme } from "next-themes";
+import { BACKGROUND_STORAGE_KEY } from "@/lib/background-color";
 
 const DEFAULT_BACKGROUND = "#ffffff";
-const BACKGROUND_STORAGE_KEY = "background-color";
+const DEFAULT_DARK_BACKGROUND = "#111111";
 
 export function BackgroundColorPicker() {
   const inputRef = useRef<HTMLInputElement>(null);
+  const { resolvedTheme } = useTheme();
 
   useEffect(() => {
     const savedColor = window.localStorage.getItem(BACKGROUND_STORAGE_KEY);
-    if (!savedColor) return;
-
-    if (inputRef.current) inputRef.current.value = savedColor;
-    document.documentElement.style.setProperty("--custom-background", savedColor);
-  }, []);
+    if (inputRef.current) {
+      inputRef.current.value =
+        savedColor ?? (resolvedTheme === "dark" ? DEFAULT_DARK_BACKGROUND : DEFAULT_BACKGROUND);
+    }
+    if (savedColor) {
+      document.documentElement.style.setProperty("--custom-background", savedColor);
+    }
+  }, [resolvedTheme]);
 
   function handleChange(event: React.ChangeEvent<HTMLInputElement>) {
     const nextColor = event.currentTarget.value;
@@ -29,7 +35,7 @@ export function BackgroundColorPicker() {
     >
       <span
         className="h-4 w-4 rounded-full border border-neutral-300 dark:border-neutral-600"
-        style={{ backgroundColor: "var(--custom-background)" }}
+        style={{ backgroundColor: "var(--background)" }}
         aria-hidden="true"
       />
       <input
