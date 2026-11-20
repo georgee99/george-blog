@@ -14,8 +14,35 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  type-check:
+    name: Type check
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: lambda/rag-analytics
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: lambda/rag-analytics/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npm run build
+
   deploy:
-    name: Type-check and deploy
+    name: Deploy
+    needs: type-check
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -43,9 +70,6 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
-
-      - name: Type-check
-        run: npm run build
 
       - name: Deploy
         run: npx serverless deploy
