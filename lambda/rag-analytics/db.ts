@@ -1,6 +1,7 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, PutCommand, QueryCommand } from '@aws-sdk/lib-dynamodb';
 import type { QueryStatus, RagQueryRecord, StoredRecord } from './types';
+import { dayInZone, type AnalyticsTimeZone } from './dates';
 
 let docClient: DynamoDBDocumentClient | null = null;
 
@@ -110,15 +111,16 @@ async function queryDay(
   filters: Filters,
   limit: number | undefined,
   startKey: Record<string, unknown> | undefined,
+  bounds: { start: string; end: string },
 ) {
   const f = filterParams(filters);
   const result = await getDocClient().send(
     new QueryCommand({
       TableName: getTableName(),
-      KeyConditionExpression: 'pk = :pk',
+      KeyConditionExpression: 'pk = :pk AND sk BETWEEN :start AND :end',
       FilterExpression: f.FilterExpression,
       ExpressionAttributeNames: Object.keys(f.names).length > 0 ? f.names : undefined,
-      ExpressionAttributeValues: { ':pk': day, ...f.values },
+      ExpressionAttributeValues: { ':pk': day, ':start': bounds.start, ':end': bounds.end, ...f.values },
       ScanIndexForward: false,
       Limit: limit,
       ExclusiveStartKey: startKey,
@@ -152,6 +154,7 @@ export async function listQueries(
   days: string[],
   filters: Filters,
   limit: number,
+  bounds: { start: string; end: string },
   cursor?: Cursor,
 ): Promise<{ items: QuerySummaryRow[]; nextCursor?: Cursor }> {
   const ordered = [...days].reverse();
@@ -166,7 +169,7 @@ export async function listQueries(
 
   for (; dayIndex < ordered.length; dayIndex++) {
     do {
-      const { items, lastKey } = await queryDay(ordered[dayIndex], filters, limit - rows.length, startKey);
+      const { items, lastKey } = await queryDay(ordered[dayIndex], filters, limit - rows.length, startKey, bounds);
       for (const i of items) {
         rows.push({
           queryId: i.queryId,
@@ -233,7 +236,13 @@ function percentile(values: number[], p: number): number | null {
   return sorted[Math.max(0, Math.ceil(p * sorted.length) - 1)];
 }
 
-export async function summarise(days: string[], filters: Filters): Promise<Summary> {
+export async function summarise(
+  days: string[],
+  utcDays: string[],
+  filters: Filters,
+  bounds: { start: string; end: string },
+  timeZone: AnalyticsTimeZone,
+): Promise<Summary> {
   const totalMs: number[] = [];
   const retrievalMs: number[] = [];
   const generationMs: number[] = [];
@@ -247,11 +256,7 @@ export async function summarise(days: string[], filters: Filters): Promise<Summa
     queriesWithUsage: 0,
     queriesWithCost: 0,
   };
-  const daily: DailyPoint[] = [];
-
-  for (const day of days) {
-    const dayMs: number[] = [];
-    const point: DailyPoint = {
+  const daily: DailyPoint[] = days.map((day) => ({
       day,
       queries: 0,
       failures: 0,
@@ -259,14 +264,21 @@ export async function summarise(days: string[], filters: Filters): Promise<Summa
       inputTokens: 0,
       outputTokens: 0,
       estimatedCostUsd: 0,
-    };
+  }));
+  const byDay = new Map(daily.map((point) => [point.day, point]));
+  const dailyMs = new Map(days.map((day) => [day, [] as number[]]));
 
+  for (const day of utcDays) {
     let startKey: Record<string, unknown> | undefined;
     do {
-      const { items, lastKey } = await queryDay(day, filters, undefined, startKey);
+      const { items, lastKey } = await queryDay(day, filters, undefined, startKey, bounds);
       startKey = lastKey;
 
       for (const i of items) {
+        const localDay = dayInZone(i.timestamp, timeZone);
+        const point = byDay.get(localDay);
+        const dayMs = dailyMs.get(localDay);
+        if (!point || !dayMs) throw new Error('Record outside analytics range');
         point.queries++;
         totals.queries++;
         if (i.status === 'success') totals.success++;
@@ -295,9 +307,8 @@ export async function summarise(days: string[], filters: Filters): Promise<Summa
       }
     } while (startKey);
 
-    point.avgTotalMs = avg(dayMs);
-    daily.push(point);
   }
+  for (const point of daily) point.avgTotalMs = avg(dailyMs.get(point.day)!);
 
   return {
     totals: {

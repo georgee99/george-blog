@@ -15,12 +15,12 @@ import {
   fmtUsd,
   rangeDays,
   resolveRange,
-  todayUtc,
+  todaySydney,
 } from '@/lib/rag-analytics/format'
 
 export const dynamic = 'force-dynamic'
 
-type SearchParams = { from?: string; to?: string; status?: string; cursor?: string }
+type SearchParams = { from?: string; to?: string; status?: string; cursor?: string; prev?: string | string[] }
 
 const pill =
   'px-3 py-1 rounded-full text-xs border transition-colors border-neutral-300 text-neutral-500 hover:border-neutral-400 hover:text-neutral-700 dark:border-neutral-700 dark:text-neutral-400 dark:hover:border-neutral-500 dark:hover:text-neutral-200'
@@ -29,9 +29,12 @@ const pillActive =
 const dateInput =
   'mt-1 block border border-neutral-200 bg-transparent px-3 py-1.5 text-sm normal-case tracking-normal text-neutral-900 focus:border-neutral-900 focus:outline-none dark:border-neutral-700 dark:text-neutral-100 dark:focus:border-neutral-100'
 
-function href(params: Record<string, string | undefined>) {
+function href(params: Record<string, string | string[] | undefined>) {
   const q = new URLSearchParams()
-  for (const [k, v] of Object.entries(params)) if (v) q.set(k, v)
+  for (const [k, v] of Object.entries(params)) {
+    if (Array.isArray(v)) v.forEach((value) => q.append(k, value))
+    else if (v) q.set(k, v)
+  }
   const s = q.toString()
   return s ? `/admin/rag?${s}` : '/admin/rag'
 }
@@ -48,6 +51,8 @@ export default async function RagAnalyticsPage({ searchParams }: { searchParams:
   const status: 'success' | 'failure' | undefined =
     sp.status === 'success' || sp.status === 'failure' ? sp.status : undefined
   const cursor = sp.cursor?.slice(0, 2000)
+  const previous = (Array.isArray(sp.prev) ? sp.prev : sp.prev ? [sp.prev] : [])
+    .filter((value) => value === 'first' || /^[A-Za-z0-9_-]{1,2000}$/.test(value))
   const tooWide = rangeDays(from, to) > MAX_RANGE_DAYS
   const filters = { from, to, ...(status ? { status } : {}) }
 
@@ -56,9 +61,9 @@ export default async function RagAnalyticsPage({ searchParams }: { searchParams:
     : await Promise.all([fetchSummary(filters), fetchQueries({ ...filters, limit: 15, cursor })])
 
   const base = { from, to, status }
-  const today = todayUtc()
+  const today = todaySydney()
   const presets = [
-    { label: '24h', from: addDays(today, -1) },
+    { label: '2d', from: addDays(today, -1) },
     { label: '7d', from: addDays(today, -6) },
     { label: '30d', from: addDays(today, -29) },
   ]
@@ -75,6 +80,7 @@ export default async function RagAnalyticsPage({ searchParams }: { searchParams:
       </Link>
 
       <form method="get" action="/admin/rag" className="space-y-4">
+        <p className="text-xs text-neutral-500">Dates and daily totals use Sydney time (AEST/AEDT).</p>
         <div className="flex flex-wrap items-center gap-2">
           {presets.map((p) => (
             <Link
@@ -160,15 +166,16 @@ export default async function RagAnalyticsPage({ searchParams }: { searchParams:
           <h2 className="text-xs uppercase tracking-widest text-neutral-400">Recent queries</h2>
           {!queries?.ok ? (
             <Notice tone="error">{queries?.error ?? 'Something went wrong.'}</Notice>
-          ) : queries.data.items.length === 0 ? (
-            <p className="text-neutral-400">{cursor ? 'No more queries' : 'No queries in this range'}</p>
           ) : (
             <>
+              {queries.data.items.length === 0 ? (
+                <p className="text-neutral-400">{cursor ? 'No more queries' : 'No queries in this range'}</p>
+              ) : (
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[34rem] text-left text-sm">
                   <thead className="text-xs uppercase tracking-widest text-neutral-400">
                     <tr className="border-b border-neutral-200 dark:border-neutral-800">
-                      <th className="py-2 pr-4 font-normal">Time (UTC)</th>
+                      <th className="py-2 pr-4 font-normal">Time (Sydney)</th>
                       <th className="py-2 pr-4 font-normal">Query</th>
                       <th className="py-2 pr-4 font-normal">Model</th>
                       <th className="py-2 pr-4 font-normal">Method</th>
@@ -213,16 +220,24 @@ export default async function RagAnalyticsPage({ searchParams }: { searchParams:
                   </tbody>
                 </table>
               </div>
+              )}
               <div className="flex items-center justify-between">
                 {cursor ? (
-                  <Link href={href(base)} className={pill}>
-                    ← Newest
-                  </Link>
+                  <div className="flex gap-2">
+                    <Link href={href(base)} className={pill}>← Newest</Link>
+                    {previous.length > 0 && (
+                      <Link href={href({
+                        ...base,
+                        cursor: previous[previous.length - 1] === 'first' ? undefined : previous[previous.length - 1],
+                        prev: previous.slice(0, -1),
+                      })} className={pill}>← Previous</Link>
+                    )}
+                  </div>
                 ) : (
                   <span />
                 )}
                 {queries.data.nextCursor ? (
-                  <Link href={href({ ...base, cursor: queries.data.nextCursor })} className={pill}>
+                  <Link href={href({ ...base, cursor: queries.data.nextCursor, prev: [...previous, cursor ?? 'first'] })} className={pill}>
                     Older →
                   </Link>
                 ) : null}

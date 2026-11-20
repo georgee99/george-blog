@@ -53,6 +53,7 @@ export interface AnalyticsFilters {
   status?: 'success' | 'failure'
   limit?: number
   cursor?: string
+  timeZone?: 'Australia/Sydney'
 }
 
 export type AnalyticsResult<T> = { ok: true; data: T } | { ok: false; error: string }
@@ -89,11 +90,11 @@ async function request<T>(path: string, filters: AnalyticsFilters): Promise<Anal
 
 // Server-only. Callers must already have verified the admin session.
 export function fetchSummary(filters: AnalyticsFilters) {
-  return request<SummaryResponse>('/summary', filters)
+  return request<SummaryResponse>('/summary', { ...filters, timeZone: 'Australia/Sydney' })
 }
 
 export function fetchQueries(filters: AnalyticsFilters) {
-  return request<QueriesResponse>('/queries', filters)
+  return request<QueriesResponse>('/queries', { ...filters, timeZone: 'Australia/Sydney' })
 }
 
 export function fetchQueryDetail(queryId: string) {

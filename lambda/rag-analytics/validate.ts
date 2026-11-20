@@ -110,6 +110,8 @@ export function parseRecord(input: unknown, now = Date.now()): RagQueryRecord | 
 
   const usage = parseUsage(input.usage);
   const queryText = str(input.queryText, 500);
+  if (input.responseText !== undefined && typeof input.responseText !== 'string') return null;
+  const responseText = input.responseText as string | undefined;
   const candidateCount = int(input.candidateCount, 10_000);
   const estimatedCostUsd = num(input.estimatedCostUsd, 1_000);
   const pricingVersion = str(input.pricingVersion, 50);
@@ -145,6 +147,7 @@ export function parseRecord(input: unknown, now = Date.now()): RagQueryRecord | 
     usage,
     ...(Object.keys(stageModels).length > 0 ? { stageModels } : {}),
     ...(queryText ? { queryText } : {}),
+    ...(responseText ? { responseText } : {}),
     ...(candidateCount !== undefined ? { candidateCount } : {}),
     ...(inputTokens !== undefined ? { inputTokens } : {}),
     ...(outputTokens !== undefined ? { outputTokens } : {}),

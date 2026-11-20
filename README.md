@@ -53,14 +53,16 @@ The comments table is referenced by name rather than created by this stack. Duri
 
 Every `/api/ask` execution that reaches the RAG pipeline is recorded: per-stage timings (ms), token usage, retrieved chunk ids with hybrid scores, estimated cost and a coarse error category.
 
-- Prompts, retrieved chunk text and generated answers are **never** stored.
+- Prompts and retrieved chunk text are **never** stored. Generated answers are stored after best-effort redaction.
 - Metrics that were unavailable are omitted rather than stored as zero. The dashboard shows them as "not captured".
 - Chunk scores are hybrid ranking scores computed *before* re-ranking, not probabilities or answer confidence. Chunk order is the final order after re-ranking.
 - Cost is an estimate from the price table in `src/lib/rag-analytics/pricing.ts` (override with `RAG_MODEL_PRICING_JSON`). Check it against current provider pricing.
 
 ### Privacy and retention
 
-The user's question is stored after redacting emails, URLs, phone-like numbers and key-like tokens (`src/lib/rag-analytics/sanitize.ts`). Redaction is best-effort: free text can still contain personal information. Every record, including its query text, is deleted automatically through a DynamoDB TTL on `expiresAt` (default 30 days; `RAG_ANALYTICS_RETENTION_DAYS`). TTL deletion is asynchronous and can lag by up to ~48 hours, so a record can briefly outlive its expiry. Changing the retention only affects new records. If you don't want query text kept at all, remove `queryText` from `RagTrace.toRecord()` in `src/lib/rag-analytics/trace.ts`.
+The user's question and generated response are stored after redacting emails, URLs, phone-like numbers and key-like tokens (`src/lib/rag-analytics/sanitize.ts`). Redaction is best-effort: free text can still contain personal information. Responses from failed streams may be partial; older records have no response. Every record, including its text, is deleted automatically through a DynamoDB TTL on `expiresAt` (default 30 days; `RAG_ANALYTICS_RETENTION_DAYS`). TTL deletion is asynchronous and can lag by up to ~48 hours, so a record can briefly outlive its expiry. Changing the retention only affects new records. If you don't want text kept at all, remove `queryText` and `responseText` from `RagTrace.toRecord()` in `src/lib/rag-analytics/trace.ts`.
+
+The dashboard displays Sydney time (AEST/AEDT), including date filters and daily totals. The underlying records remain partitioned by UTC day. Deploy the analytics Lambda before the app so the Lambda understands the Sydney date range and response field; records saved before this update cannot show a response.
 
 ### Failure isolation
 
@@ -209,7 +211,7 @@ After deploying, on `https://georgeelz.blog`:
 - [ ] `/admin` while signed out redirects to the private-area sign-in page; `/api/admin/session` returns 401
 - [ ] Signing in with the admin Google account opens the dashboard; **Sign out** returns you to the sign-in page and `/admin` is protected again
 - [ ] Signing in with any other Google account is rejected (use a second account or an incognito window)
-- [ ] After asking a question, a new row appears in the RAG analytics dashboard (try 24h, then clear the date/status filters), and its detail page shows timings, tokens, cost and ranked chunks
+- [ ] After asking a question, a new row appears in the RAG analytics dashboard (try 2d, then clear the date/status filters), and its detail page shows the redacted response, timings, tokens, cost and ranked chunks
 - [ ] The row's DynamoDB item has `expiresAt` roughly 30 days ahead
 - [ ] A failing question path still shows up as a failed row (optional)
 - [ ] Vercel function logs show no `[rag-analytics] persist failed` errors

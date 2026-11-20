@@ -6,21 +6,25 @@ export function isValidDay(v: unknown): v is string {
   return typeof v === 'string' && DAY_RE.test(v) && Number.isFinite(Date.parse(v))
 }
 
-export function todayUtc(now = Date.now()): string {
-  return new Date(now).toISOString().slice(0, 10)
+export function todaySydney(now = Date.now()): string {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Australia/Sydney', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).formatToParts(new Date(now))
+  const part = (type: string) => parts.find((p) => p.type === type)?.value
+  return `${part('year')}-${part('month')}-${part('day')}`
 }
 
 export function addDays(day: string, delta: number): string {
   return new Date(Date.parse(day) + delta * DAY_MS).toISOString().slice(0, 10)
 }
 
-// Defaults to the last 7 UTC days; invalid input falls back rather than erroring.
+// Defaults to the last 7 Sydney calendar days; invalid input falls back rather than erroring.
 export function resolveRange(
   from: string | undefined,
   to: string | undefined,
   now = Date.now(),
 ): { from: string; to: string } {
-  const end = isValidDay(to) ? to : todayUtc(now)
+  const end = isValidDay(to) ? to : todaySydney(now)
   const start = isValidDay(from) ? from : addDays(end, -6)
   return start <= end ? { from: start, to: end } : { from: end, to: start }
 }
@@ -48,11 +52,13 @@ export const fmtPct = (n: number | null | undefined) => (n == null ? '—' : `${
 
 export function fmtTimestamp(iso: string): string {
   return new Date(iso).toLocaleString('en-AU', {
-    timeZone: 'UTC',
+    timeZone: 'Australia/Sydney',
     day: '2-digit',
     month: 'short',
+    year: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
     hour12: false,
+    timeZoneName: 'short',
   })
 }
