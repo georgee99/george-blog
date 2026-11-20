@@ -4,7 +4,7 @@ import { auth } from '@/auth'
 import { getAdminSession } from '@/lib/admin-auth'
 import { AccessDenied } from '@/components/admin-access'
 import { fetchQueryDetail } from '@/lib/rag-analytics/admin-client'
-import { fmtInt, fmtMs, fmtUsd } from '@/lib/rag-analytics/format'
+import { fmtInt, fmtMs, fmtTimestamp, fmtUsd } from '@/lib/rag-analytics/format'
 import { STAGES, type Stage } from '@/lib/rag-analytics/types'
 
 export const dynamic = 'force-dynamic'
@@ -70,7 +70,7 @@ export default async function QueryDetailPage({ params }: { params: Promise<{ qu
       <Section title="Overview">
         <Grid
           items={[
-            { label: 'Time (UTC)', value: new Date(r.timestamp).toISOString().replace('T', ' ').slice(0, 19) },
+            { label: 'Time (Sydney)', value: fmtTimestamp(r.timestamp) },
             {
               label: 'Status',
               value:
@@ -88,6 +88,18 @@ export default async function QueryDetailPage({ params }: { params: Promise<{ qu
               : []),
           ]}
         />
+      </Section>
+
+      <Section title="Response">
+        {r.responseText ? (
+          <>
+            <p className="whitespace-pre-wrap break-words leading-relaxed">{r.responseText}</p>
+            <p className="text-xs text-neutral-400">
+              Sensitive patterns are redacted; redaction is best-effort.
+              {r.status === 'failure' ? ' The response may be incomplete.' : ''}
+            </p>
+          </>
+        ) : <p className="text-neutral-400">Response not captured.</p>}
       </Section>
 
       <Section title="Timings">

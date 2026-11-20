@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto'
 import { estimateCostUsd } from './pricing'
-import { categorizeError } from './sanitize'
+import { categorizeError, sanitizeResponseText } from './sanitize'
 import type { ErrorCategory } from './sanitize'
 import type { RagQueryRecord, RetrievedChunk, Stage, StageUsage } from './types'
 
@@ -23,6 +23,7 @@ export class RagTrace {
   private reranked = false
   private failed = false
   private errorCategory: ErrorCategory | undefined
+  private responseText = ''
 
   constructor(
     private readonly queryText: string,
@@ -61,6 +62,10 @@ export class RagTrace {
     this.reranked = true
   }
 
+  appendResponse(content: string): void {
+    this.responseText += content
+  }
+
   fail(error: unknown): void {
     this.failed = true
     this.errorCategory = categorizeError(error)
@@ -94,6 +99,7 @@ export class RagTrace {
       stageModels: this.models,
       retrievalMethod: this.reranked ? 'hybrid+rerank' : 'hybrid',
       ...(this.queryText ? { queryText: this.queryText } : {}),
+      ...(this.responseText ? { responseText: sanitizeResponseText(this.responseText) } : {}),
       chunks: this.chunks,
       ...(this.candidateCount !== undefined ? { candidateCount: this.candidateCount } : {}),
       timings: {

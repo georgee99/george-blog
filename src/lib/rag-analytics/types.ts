@@ -26,6 +26,7 @@ export interface RagQueryRecord {
   stageModels: Record<Stage, string>
   retrievalMethod: string
   queryText?: string
+  responseText?: string
   chunks: RetrievedChunk[]
   candidateCount?: number
   timings: {

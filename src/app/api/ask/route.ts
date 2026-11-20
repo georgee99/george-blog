@@ -594,6 +594,7 @@ export async function POST(req: NextRequest) {
         // Helper to send content chunks
         const sendContent = (content: string) => {
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'content', content })}\n\n`))
+          trace.appendResponse(content)
         }
 
         // Query rewriting

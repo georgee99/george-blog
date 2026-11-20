@@ -44,6 +44,7 @@ export interface RagQueryRecord {
   stageModels?: Partial<Record<Stage, string>>;
   retrievalMethod: string;
   queryText?: string;
+  responseText?: string;
   chunks: RetrievedChunk[];
   candidateCount?: number;
   timings: Timings;

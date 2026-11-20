@@ -1,6 +1,7 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { isAuthorised, json } from './http';
 import { enumerateDays, listQueries, MAX_RANGE_DAYS, summarise, type Cursor, type Filters } from './db';
+import { dateBounds, dayInZone, type AnalyticsTimeZone } from './dates';
 
 const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -28,7 +29,11 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
   if (!isAuthorised(event)) return json(401, { error: 'Unauthorized' });
 
   const q = event.queryStringParameters ?? {};
-  const today = new Date().toISOString().slice(0, 10);
+  if (q.timeZone !== undefined && q.timeZone !== 'UTC' && q.timeZone !== 'Australia/Sydney') {
+    return json(400, { error: 'Invalid time zone' });
+  }
+  const timeZone: AnalyticsTimeZone = q.timeZone ?? 'UTC';
+  const today = dayInZone(Date.now(), timeZone);
   const to = q.to ?? today;
   const from = q.from ?? new Date(Date.parse(to) - 6 * DAY_MS).toISOString().slice(0, 10);
 
@@ -39,6 +44,8 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
   if (days.length > MAX_RANGE_DAYS) {
     return json(400, { error: `Date range cannot exceed ${MAX_RANGE_DAYS} days` });
   }
+  const bounds = dateBounds(from, to, timeZone);
+  const utcDays = enumerateDays(bounds.start.slice(0, 10), new Date(Date.parse(bounds.end) - 1).toISOString().slice(0, 10));
 
   const filters: Filters = {};
   if (q.status !== undefined) {
@@ -49,7 +56,7 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
 
   try {
     if (event.path.endsWith('/summary')) {
-      return json(200, { range: { from, to }, ...(await summarise(days, filters)) });
+      return json(200, { range: { from, to }, ...(await summarise(days, utcDays, filters, bounds, timeZone)) });
     }
 
     const limit = Math.min(Math.max(Number.parseInt(q.limit ?? '25', 10) || 25, 1), 100);
@@ -59,7 +66,7 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
       if (!cursor) return json(400, { error: 'Invalid cursor' });
     }
 
-    const { items, nextCursor } = await listQueries(days, filters, limit, cursor);
+    const { items, nextCursor } = await listQueries(utcDays, filters, limit, bounds, cursor);
     return json(200, { items, ...(nextCursor ? { nextCursor: encodeCursor(nextCursor) } : {}) });
   } catch (err) {
     if (err instanceof Error && err.message === 'Invalid cursor') return json(400, { error: 'Invalid cursor' });

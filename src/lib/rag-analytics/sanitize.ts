@@ -5,15 +5,21 @@ export type ErrorCategory =
   | 'timeout'
   | 'internal_error'
 
-// Query text is retained for a limited time, so strip obvious personal data and secrets first.
-export function sanitizeQueryText(input: string): string {
+// Free text is retained for a limited time, so strip obvious personal data and secrets first.
+function redactText(input: string): string {
   return input
     .replace(/[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g, '[email]')
     .replace(/\bhttps?:\/\/\S+/gi, '[url]')
     .replace(/\b(?:sk|pk|key|token)[-_][A-Za-z0-9_-]{8,}\b/gi, '[secret]')
     .replace(/\+?\d[\d\s().-]{7,}\d/g, '[number]')
-    .trim()
-    .slice(0, 500)
+}
+
+export function sanitizeQueryText(input: string): string {
+  return redactText(input).trim().slice(0, 500)
+}
+
+export function sanitizeResponseText(input: string): string {
+  return redactText(input)
 }
 
 // Only a coarse category is stored; raw error messages never leave the request.
