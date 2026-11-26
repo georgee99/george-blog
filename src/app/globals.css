@@ -27,6 +27,14 @@ body {
   font-family: var(--font-geist-sans), system-ui, sans-serif;
 }
 
+.article-body :is(h1, h2, h3, h4, h5, h6) {
+  scroll-margin-top: 5rem;
+}
+
+.article-body pre {
+  padding-top: 3rem;
+}
+
 /* Allow img inside a .not-prose wrapper to be positioned via its parent */
 .not-prose img {
   display: block;

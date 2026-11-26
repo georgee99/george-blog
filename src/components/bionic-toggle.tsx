@@ -80,68 +80,61 @@ export default function BionicToggle() {
   )
 }
 
+const replacements = new WeakMap<HTMLElement, Array<{ original: Text; replacement: HTMLSpanElement }>>()
+
 function enableBionic(root: HTMLElement) {
   if (!root) return
-  
-  // Skip if already processed
-  if (root.hasAttribute('data-bionic-active')) return
-  
-  // Save original only once
-  if (!root.hasAttribute('data-bionic-original')) {
-    root.setAttribute('data-bionic-original', root.innerHTML)
-  }
-
-  const original = root.getAttribute('data-bionic-original')!
-  const skipTags = new Set(['STYLE', 'SCRIPT', 'CODE', 'PRE', 'A', 'BUTTON', 'INPUT', 'TEXTAREA', 'IMG', 'SVG'])
-
-  // Process in memory first
-  const temp = document.createElement('div')
-  temp.innerHTML = original
+  if (replacements.has(root)) return
 
   const walker = document.createTreeWalker(
-    temp,
+    root,
     NodeFilter.SHOW_TEXT,
     {
       acceptNode: (node) => {
         const parent = node.parentElement
-        if (!parent || skipTags.has(parent.tagName)) return NodeFilter.FILTER_REJECT
+        if (!parent || parent.closest('style, script, code, pre, a, button, input, textarea, svg')) return NodeFilter.FILTER_REJECT
         return node.nodeValue?.trim() ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT
       }
     }
   )
 
-  const nodesToReplace: Array<{node: Node, html: string}> = []
+  const nodesToReplace: Array<{ original: Text; replacement: HTMLSpanElement }> = []
   let node: Node | null
   
   while ((node = walker.nextNode())) {
     const text = node.nodeValue || ''
     // Simplified regex - much faster than \p{L}+
-    const transformed = text.replace(/\b([a-zA-Z]{2,})\b/g, (word) => {
-      const len = word.length
-      const splitPoint = Math.max(1, Math.ceil(len * 0.35))
-      return `<strong>${word.slice(0, splitPoint)}</strong>${word.slice(splitPoint)}`
-    })
-    
-    if (transformed !== text) {
-      nodesToReplace.push({node, html: transformed})
+    const matches = [...text.matchAll(/\b[a-zA-Z]{2,}\b/g)]
+    if (matches.length) {
+      const span = document.createElement('span')
+      let offset = 0
+      for (const match of matches) {
+        const index = match.index
+        const word = match[0]
+        const split = Math.max(1, Math.ceil(word.length * 0.35))
+        span.append(document.createTextNode(text.slice(offset, index)))
+        const strong = document.createElement('strong')
+        strong.textContent = word.slice(0, split)
+        span.append(strong, document.createTextNode(word.slice(split)))
+        offset = index + word.length
+      }
+      span.append(document.createTextNode(text.slice(offset)))
+      nodesToReplace.push({ original: node as Text, replacement: span })
     }
   }
 
-  // Apply all replacements
-  for (const {node, html} of nodesToReplace) {
-    const span = document.createElement('span')
-    span.innerHTML = html
-    node.parentNode?.replaceChild(span, node)
+  for (const { original, replacement } of nodesToReplace) {
+    original.parentNode?.replaceChild(replacement, original)
   }
-
-  root.innerHTML = temp.innerHTML
-  root.setAttribute('data-bionic-active', '1')
+  replacements.set(root, nodesToReplace)
 }
 
 function restoreOriginal(root: HTMLElement) {
-  const original = root.getAttribute('data-bionic-original')
-  if (original) {
-    root.innerHTML = original
-    root.removeAttribute('data-bionic-active')
+  const nodes = replacements.get(root)
+  if (nodes) {
+    for (const { original, replacement } of nodes) {
+      replacement.parentNode?.replaceChild(original, replacement)
+    }
+    replacements.delete(root)
   }
 }

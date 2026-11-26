@@ -34,6 +34,24 @@ export function getAllPosts(): PostMeta[] {
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 }
 
+export function getRelatedPosts(current: PostMeta, posts: PostMeta[]): PostMeta[] {
+  const tags = new Set(current.tags.map((tag) => tag.toLowerCase()));
+  const seen = new Set<string>();
+  return posts
+    .filter((post) => {
+      if (!post.published || post.slug === current.slug || seen.has(post.slug)) return false;
+      seen.add(post.slug);
+      return true;
+    })
+    .map((post) => ({
+      post,
+      score: new Set(post.tags.map((tag) => tag.toLowerCase()).filter((tag) => tags.has(tag))).size,
+    }))
+    .sort((a, b) => b.score - a.score || b.post.date.localeCompare(a.post.date) || a.post.slug.localeCompare(b.post.slug))
+    .slice(0, 3)
+    .map(({ post }) => post);
+}
+
 function readPostMeta(slug: string): PostMeta {
   const filePath = path.join(POSTS_DIR, `${slug}.mdx`);
   const raw = fs.readFileSync(filePath, "utf-8");
