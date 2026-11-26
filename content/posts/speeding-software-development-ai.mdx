@@ -1,0 +1,123 @@
+---
+title: Speeding Up Development with AI
+date: 2026-11-26
+description: Talking about how I speed up software development using AI
+published: true
+tags: ["coding", "tech", "work"]
+---
+
+AI-assisted development has become a regular part of my workflow as a software engineer. While coding agents are already incredibly capable of implementing features and fixing bugs, there's a lot more that can be done besides simply prompting them. Over time, especially since my new role, I've been exploring different ways to improve my development workflow, whether that's reducing repetitive tasks, providing agents with better context, or even working on multiple features simultaneously. There's also some more advanced agentic workflows that I haven't explored yet, which I want to discuss at the end.
+
+## Making coding agents more effective
+
+One of the easiest ways to improve the effectiveness of a coding agent is by providing it with better context. When working within a repo, theres usually established architectural patterns, coding conventions and business rules that the agent needs to be aware of. Without this context, there's a good chance you'll be constantly correcting the agent or providing the same instructions across different sessions.
+
+Repository-level instructions, such as `AGENTS.md` or `copilot-instructions.md` allow developers to define these expectations upfront. This could include how the application is structured, how exceptions are handled, what testing frameworks are used and which architectural patterns should be followed.
+
+Another way of making coding agents more effective is through reusable skills. While repository instructions generally define how an agent should behave within a codebase, skills provide more specific guidance for performing particular tasks. A popular example of this is [Impeccable](https://github.com/pbakaus/impeccable), a skill designed to improve the quality of AI-generated frontend designs. It provides commands such as `/impeccable critique` and `/impeccable polish`, which allow developers to review and refine user interfaces based on established design principles. Rather than repeatedly explaining what makes a good user interface, the developer can utilise a skill that already contains this knowledge.
+
+MCP (Model Context Protocol) servers can also be used to extend the capabilities of coding agents by giving them access to external tools and resources. An agent connected to a database through MCP could inspect table structures and relationships without requiring the developer to manually provide the schema. Other examples include connecting agents to issue trackers, application logs and documentation.
+
+## Parallel development and delegation
+
+One of the more interesting aspects of agentic development is the ability to delegate work. This can be done through subagents, where a primary agent delegates specific responsibilities to other agents. For example, multiple subagents could simultaneously investigate different areas of a codebase, with the primary agent using their findings to implement a feature.
+
+This concept can be extended beyond individual features. Rather than waiting for a coding agent to finish implementing one feature before moving onto the next, developers can run multiple coding agent sessions simultaneously.
+
+A useful way of achieving this locally is through Git worktrees. A worktree allows you to check out a separate branch of the same repository into its own working directory. You could have three coding agents working on three different features, each operating within its own worktree and branch. This prevents agents from interfering with each other's uncommitted changes, although merge conflicts can still occur when the features are eventually integrated. However, AI agents have also made resolving merge conflicts considerably easier.
+
+Cloud-based coding agents can achieve something similar by running tasks within separate execution environments. This allows developers to delegate work without necessarily having multiple instances of their IDE open.
+
+Something I've personally struggled with when working on multiple features simultaneously is context switching. While AI allows me to progress several tasks at once, I still need to understand the requirements, business context and implementation of each feature. This becomes particularly difficult when the tasks are unrelated. There comes a point where working on more features simultaneously can become counterproductive, regardless of how quickly the code is being written.
+
+## Automating feedback loops
+
+Another area where a lot of time can be saved is through automating the feedback loop between implementation and validation.
+
+A fairly common workflow involves asking an agent to implement a feature, running the application or its tests, encountering an error and then providing that error back to the agent. This process can repeat several times before the feature is working as expected.
+
+Coding agents with access to a terminal can handle much of this themselves. They can compile the application, run unit tests, inspect errors and make corrections based on the results. Providing the agent with clear completion criteria can make this process more effective.
+
+For example, rather than simply asking an agent to implement a feature, you could also instruct it to run the relevant tests, perform static analysis and resolve any issues introduced by its changes before completing the task.
+
+This doesn't remove the need for developers to validate the implementation, but it does reduce the amount of time spent going back and forth with the agent over relatively straightforward issues.
+
+## Balancing speed and quality
+
+Generating code faster doesn't necessarily mean delivering software faster. There's still a considerable amount of work involved in understanding requirements, making architectural decisions and validating that the implementation actually solves the business problem.
+
+It's also quite easy to accumulate technical debt when using AI, particularly when accepting large amounts of generated code without properly understanding it. A feature that takes 20 minutes to implement but several hours to fix or maintain isn't necessarily an improvement.
+
+I think it's important to distinguish between how quickly code is being produced and how quickly reliable software is being delivered. The latter is ultimately what matters.
+
+## Exploring more advanced agentic workflows
+
+While I've explored several ways of improving my AI-assisted development workflow, there are still some interesting approaches that I haven't personally experimented with. These generally involve taking the automation further and reducing the amount of manual coordination required from developers.
+
+**Evaluator-optimiser workflows**
+
+An evaluator-optimiser workflow involves separating the implementation and evaluation responsibilities between agents. One agent implements a feature, while another evaluates the implementation against a set of requirements or quality criteria.
+
+If the evaluator identifies an issue, the feedback is passed back to the implementation agent, which makes the necessary corrections. This process can repeat until the criteria are satisfied or a predefined iteration limit is reached.
+
+<div className="not-prose">
+  <img
+    src="/inserts/EVALUATOR_OPTIMISED_WORKFLOW.svg"
+    alt="Evaluator-optimiser workflows"
+    className="mx-auto block w-120"
+    style={{ height: "auto" }}
+  />
+</div>
+
+What's interesting about this approach is that it creates a more structured feedback loop than simply asking a coding agent to review its own changes. Automated tests and static analysis can also be incorporated into the evaluation process, rather than relying entirely on the judgement of another AI model.
+
+**Event-driven coding agents**
+
+Most of my interactions with coding agents involve manually initiating a task. However, there's also the possibility of triggering agents in response to events that occur throughout the software development lifecycle.
+
+For example, when a CI pipeline fails, an agent could automatically investigate the failure, inspect the relevant logs and propose a fix. Similarly, when a bug ticket is created, an agent could investigate the codebase and provide information about the potential root cause before a developer even picks up the ticket.
+
+<div className="not-prose">
+  <img
+    src="/inserts/EVENT_DRIVEN_CODING_AGENT.svg"
+    alt="Evaluator-optimiser workflows"
+    className="mx-auto block w-120"
+    style={{ height: "auto" }}
+  />
+</div>
+
+This could be achieved through webhooks, CI/CD pipelines and integrations with coding agents. The developer would still be responsible for reviewing the findings and approving any changes, but much of the initial investigation could already be completed.
+
+**Autonomous software factories**
+
+A more ambitious concept is what's sometimes referred to as an autonomous software factory. Rather than managing individual coding agents yourself, an orchestration system coordinates multiple agents across a development backlog.
+
+The orchestrator could identify dependencies between tasks, determine which features can be implemented simultaneously, allocate work to different agents and coordinate testing and review. Each agent could operate within an isolated environment and produce a pull request once its assigned task is completed.
+
+<div className="not-prose">
+  <img
+    src="/inserts/AUTONOMOUS_SOFTWARE_FACTORIES.svg"
+    alt="Evaluator-optimiser workflows"
+    className="mx-auto block w-120"
+    style={{ height: "auto" }}
+  />
+</div>
+
+This essentially combines several of the techniques discussed throughout this article into a larger system. There are obviously some challenges with this approach, particularly around conflicting implementations, ambiguous requirements and maintaining consistency across a codebase. However, it's an interesting area that I'd like to explore further.
+
+## My take
+
+I think there's a lot of room for improvement in how developers currently utilise AI. It's quite easy to get comfortable with simply prompting a coding agent to implement features, particularly when that alone already provides a noticeable improvement in productivity.
+
+However, I've become increasingly interested in improving the workflow surrounding the agent itself. Providing better context, creating reusable skills, connecting external tools and automating repetitive tasks can all contribute to reducing the amount of manual work involved in development.
+
+As AI becomes more capable of handling implementation, I think a bigger challenge for developers will be managing and understanding the work being produced. There's little benefit in having several agents implementing features simultaneously if you're unable to properly review or understand their changes. Finding the right balance between automation, productivity and quality is something I'm still exploring myself.
+
+<div className="not-prose">
+  <img
+    src="/meow/S39.png"
+    alt="My cat"
+    className="mx-auto block w-80"
+    style={{ height: "auto" }}
+  />
+</div>
