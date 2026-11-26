@@ -7,6 +7,7 @@ Update: The blog now contains AI
 
 ## Contents
 
+- [Command palette](#command-palette)
 - [Admin area](#admin-area-admin)
 - [Comment and guestbook moderation](#comment-and-guestbook-moderation)
 - [RAG analytics](#rag-analytics)
@@ -16,6 +17,12 @@ Update: The blog now contains AI
 - [Maintenance](#maintenance)
 - [Production deployment checklist](#production-deployment-checklist)
 - [Known limitations](#known-limitations)
+
+## Command palette
+
+Use the Search button or Ctrl+K (Cmd+K on macOS) to search published articles and navigate to public pages. The shortcut is left to the current application when an editable field is focused. Use the arrow keys to select a result, Enter to open it, and Escape or a click outside to dismiss. The modal keeps focus inside while open and restores it on dismissal; results are exposed as a searchable listbox.
+
+Article metadata is requested only when the palette opens, using the same published-post filter as the blog. Matching is case-insensitive and supports partial terms in titles, descriptions, tags and slugs. Exact and prefix titles rank first, followed by other title matches and metadata matches; ties retain the original order. This is separate from the AI-powered Ask page and does not search article bodies or use embeddings. If metadata fails to load, page shortcuts remain available and reopening the palette retries the request.
 
 ## Admin area (`/admin`)
 
