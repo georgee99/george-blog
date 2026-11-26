@@ -196,7 +196,8 @@ export async function listQueries(
 
   for (; dayIndex < ordered.length; dayIndex++) {
     do {
-      const { items, lastKey } = await queryDay(ordered[dayIndex], filters, limit - rows.length, startKey, bounds);
+      const batchLimit = filters.feedback ? Math.max(200, limit - rows.length) : limit - rows.length;
+      const { items, lastKey } = await queryDay(ordered[dayIndex], filters, batchLimit, startKey, bounds);
       for (const i of items) {
         rows.push({
           queryId: i.queryId,
@@ -210,6 +211,9 @@ export async function listQueries(
           ...(i.errorCategory ? { errorCategory: i.errorCategory } : {}),
           ...(i.feedback ? { feedback: i.feedback } : {}),
         });
+        if (rows.length >= limit && i !== items[items.length - 1]) {
+          return { items: rows, nextCursor: { pk: ordered[dayIndex], key: { pk: i.pk, sk: i.sk } } };
+        }
       }
       startKey = lastKey;
 
