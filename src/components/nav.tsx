@@ -3,6 +3,7 @@ import { BackgroundColorPicker } from "./background-color-picker";
 import { ThemeToggle } from "./theme-toggle";
 import BionicToggle from "./bionic-toggle";
 import { siteConfig } from "@/lib/config";
+import { CommandPalette } from "./command-palette";
 
 const navLinks = [
   { href: "/", label: "Home" },
@@ -15,7 +16,7 @@ const navLinks = [
 export function Nav() {
   return (
     <nav className="sticky top-0 z-50 border-b border-neutral-200 bg-white/80 py-4 backdrop-blur-sm dark:border-neutral-800 dark:bg-neutral-950/80">
-      <div className="mx-auto flex max-w-2xl items-center justify-between px-4">
+      <div className="mx-auto flex max-w-2xl flex-wrap items-center justify-between gap-y-2 px-4">
         <div className="flex items-center gap-6">
           <Link
             href="/"
@@ -36,6 +37,7 @@ export function Nav() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <CommandPalette />
           <BackgroundColorPicker />
           <BionicToggle />
           <ThemeToggle />
