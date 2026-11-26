@@ -83,6 +83,7 @@ export default async function QueryDetailPage({ params }: { params: Promise<{ qu
             { label: 'Model', value: r.model },
             { label: 'Retrieval method', value: r.retrievalMethod },
             { label: 'Query ID', value: <span className="break-all font-mono text-xs">{r.queryId}</span> },
+            { label: 'Feedback', value: r.feedback === 'down' ? <span className="font-semibold text-red-600 dark:text-red-400">👎 Negative</span> : r.feedback === 'up' ? '👍 Positive' : 'Not rated' },
             ...(r.status === 'failure'
               ? [{ label: 'Error category', value: r.errorCategory ?? unavailable }]
               : []),

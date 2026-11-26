@@ -10,6 +10,7 @@ export interface QuerySummaryRow {
   totalMs: number
   chunkCount: number
   errorCategory?: string
+  feedback?: 'up' | 'down'
 }
 
 export interface DailyPoint {
@@ -38,6 +39,8 @@ export interface SummaryResponse {
     estimatedCostUsd: number
     queriesWithUsage: number
     queriesWithCost: number
+    positiveFeedback: number
+    negativeFeedback: number
   }
   daily: DailyPoint[]
 }
@@ -54,6 +57,7 @@ export interface AnalyticsFilters {
   limit?: number
   cursor?: string
   timeZone?: 'Australia/Sydney'
+  feedback?: 'up' | 'down'
 }
 
 export type AnalyticsResult<T> = { ok: true; data: T } | { ok: false; error: string }

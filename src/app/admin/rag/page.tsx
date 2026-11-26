@@ -20,7 +20,7 @@ import {
 
 export const dynamic = 'force-dynamic'
 
-type SearchParams = { from?: string; to?: string; status?: string; cursor?: string; prev?: string | string[] }
+type SearchParams = { from?: string; to?: string; status?: string; feedback?: string; cursor?: string; prev?: string | string[] }
 
 const pill =
   'px-3 py-1 rounded-full text-xs border transition-colors border-neutral-300 text-neutral-500 hover:border-neutral-400 hover:text-neutral-700 dark:border-neutral-700 dark:text-neutral-400 dark:hover:border-neutral-500 dark:hover:text-neutral-200'
@@ -50,17 +50,18 @@ export default async function RagAnalyticsPage({ searchParams }: { searchParams:
   const { from, to } = resolveRange(sp.from, sp.to)
   const status: 'success' | 'failure' | undefined =
     sp.status === 'success' || sp.status === 'failure' ? sp.status : undefined
+  const feedback: 'up' | 'down' | undefined = sp.feedback === 'up' || sp.feedback === 'down' ? sp.feedback : undefined
   const cursor = sp.cursor?.slice(0, 2000)
   const previous = (Array.isArray(sp.prev) ? sp.prev : sp.prev ? [sp.prev] : [])
     .filter((value) => value === 'first' || /^[A-Za-z0-9_-]{1,2000}$/.test(value))
   const tooWide = rangeDays(from, to) > MAX_RANGE_DAYS
-  const filters = { from, to, ...(status ? { status } : {}) }
+  const filters = { from, to, ...(status ? { status } : {}), ...(feedback ? { feedback } : {}) }
 
   const [summary, queries] = tooWide
     ? [null, null]
     : await Promise.all([fetchSummary(filters), fetchQueries({ ...filters, limit: 15, cursor })])
 
-  const base = { from, to, status }
+  const base = { from, to, status, feedback }
   const today = todaySydney()
   const presets = [
     { label: '2d', from: addDays(today, -1) },
@@ -85,7 +86,7 @@ export default async function RagAnalyticsPage({ searchParams }: { searchParams:
           {presets.map((p) => (
             <Link
               key={p.label}
-              href={href({ from: p.from, to: today, status })}
+              href={href({ from: p.from, to: today, status, feedback })}
               className={activePreset === p.label ? pillActive : pill}
             >
               {p.label}
@@ -99,10 +100,20 @@ export default async function RagAnalyticsPage({ searchParams }: { searchParams:
           ].map((s) => (
             <Link
               key={s.label}
-              href={href({ from, to, status: s.value })}
+              href={href({ from, to, status: s.value, feedback })}
               className={status === s.value ? pillActive : pill}
             >
               {s.label}
+            </Link>
+          ))}
+          <span className="mx-1 text-neutral-300 dark:text-neutral-700">|</span>
+          {[
+            { label: 'all ratings', value: undefined },
+            { label: '👍 positive', value: 'up' },
+            { label: '👎 negative', value: 'down' },
+          ].map((f) => (
+            <Link key={f.label} href={href({ from, to, status, feedback: f.value })} className={feedback === f.value ? pillActive : pill}>
+              {f.label}
             </Link>
           ))}
         </div>
@@ -116,6 +127,7 @@ export default async function RagAnalyticsPage({ searchParams }: { searchParams:
             <input type="date" name="to" defaultValue={to} className={dateInput} />
           </label>
           {status && <input type="hidden" name="status" value={status} />}
+          {feedback && <input type="hidden" name="feedback" value={feedback} />}
           <button
             type="submit"
             className="bg-neutral-900 px-4 py-1.5 text-sm font-medium text-white transition-opacity hover:opacity-80 dark:bg-neutral-100 dark:text-neutral-900"
@@ -181,6 +193,7 @@ export default async function RagAnalyticsPage({ searchParams }: { searchParams:
                       <th className="py-2 pr-4 font-normal">Method</th>
                       <th className="py-2 pr-4 text-right font-normal">Latency</th>
                       <th className="py-2 pr-4 font-normal">Status</th>
+                      <th className="py-2 pr-4 font-normal">Feedback</th>
                       <th className="py-2 text-right font-normal">Chunks</th>
                     </tr>
                   </thead>
@@ -214,6 +227,7 @@ export default async function RagAnalyticsPage({ searchParams }: { searchParams:
                             </span>
                           )}
                         </td>
+                        <td className="whitespace-nowrap py-3 pr-4">{q.feedback === 'down' ? <span className="font-semibold text-red-600 dark:text-red-400">👎 Negative</span> : q.feedback === 'up' ? '👍 Positive' : '—'}</td>
                         <td className="py-3 text-right tabular-nums">{q.chunkCount}</td>
                       </tr>
                     ))}
@@ -256,6 +270,8 @@ function Overview({ data }: { data: SummaryResponse }) {
     { label: 'Queries', value: fmtInt(t.queries) },
     { label: 'Successful', value: fmtInt(t.success) },
     { label: 'Failed', value: fmtInt(t.failure) },
+    { label: 'Positive feedback', value: fmtInt(t.positiveFeedback ?? 0) },
+    { label: 'Negative feedback', value: fmtInt(t.negativeFeedback ?? 0) },
     { label: 'Failure rate', value: fmtPct(t.failureRate) },
     { label: 'Avg latency', value: fmtMs(t.avgTotalMs) },
     { label: 'p95 latency', value: fmtMs(t.p95TotalMs) },

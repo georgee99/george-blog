@@ -75,6 +75,17 @@ functions:
           method: get
           private: true
 
+  feedback:
+    handler: feedback.handler
+    description: Save one rating on a completed RAG query
+    role: FeedbackRole
+    timeout: 10
+    events:
+      - http:
+          path: /rag-analytics/feedback
+          method: post
+          private: true
+
 resources:
   Resources:
     RagAnalyticsTable:
@@ -127,6 +138,29 @@ resources:
                 - Effect: Allow
                   Action:
                     - dynamodb:PutItem
+                  Resource: !GetAtt RagAnalyticsTable.Arn
+
+    FeedbackRole:
+      Type: AWS::IAM::Role
+      Properties:
+        AssumeRolePolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service: lambda.amazonaws.com
+              Action: sts:AssumeRole
+        ManagedPolicyArns:
+          - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        Policies:
+          - PolicyName: update-feedback
+            PolicyDocument:
+              Version: '2012-10-17'
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - dynamodb:GetItem
+                    - dynamodb:UpdateItem
                   Resource: !GetAtt RagAnalyticsTable.Arn
 
     ReadRole:

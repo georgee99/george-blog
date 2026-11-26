@@ -53,6 +53,10 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
     filters.status = q.status;
   }
   if (q.model) filters.model = q.model.slice(0, 100);
+  if (q.feedback !== undefined) {
+    if (q.feedback !== 'up' && q.feedback !== 'down') return json(400, { error: 'Invalid feedback' });
+    filters.feedback = q.feedback;
+  }
 
   try {
     if (event.path.endsWith('/summary')) {

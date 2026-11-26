@@ -42,4 +42,5 @@ export interface RagQueryRecord {
   costBreakdownUsd?: Partial<Record<Stage, number>>
   pricingVersion?: string
   errorCategory?: ErrorCategory
+  feedback?: 'up' | 'down'
 }

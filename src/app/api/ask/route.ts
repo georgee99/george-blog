@@ -6,6 +6,7 @@ import MiniSearch from 'minisearch'
 import { RagTrace } from '@/lib/rag-analytics/trace'
 import { flushTrace } from '@/lib/rag-analytics/client'
 import { sanitizeQueryText } from '@/lib/rag-analytics/sanitize'
+import { feedbackToken } from '@/lib/rag-analytics/feedback-token'
 
 // Config
 const EMBEDDING_MODEL = 'text-embedding-3-small'
@@ -597,6 +598,14 @@ export async function POST(req: NextRequest) {
           trace.appendResponse(content)
         }
 
+        const sendDone = () => {
+          const analyticsKey = process.env.RAG_ANALYTICS_API_KEY
+          const feedback = analyticsKey && process.env.RAG_ANALYTICS_API_URL
+            ? { queryId: trace.queryId, timestamp: trace.timestamp, token: feedbackToken(trace.queryId, trace.timestamp, analyticsKey) }
+            : undefined
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'done', feedback })}\n\n`))
+        }
+
         // Query rewriting
         sendProgress('Optimizing search query...')
         const { rewritten: queryForSearch, tags: extractedTags } = await trace.time(
@@ -638,6 +647,7 @@ export async function POST(req: NextRequest) {
 
         if (selectedChunks.length === 0) {
           sendContent("I don't have that in my posts.")
+          sendDone()
           controller.close()
           return
         }
@@ -675,7 +685,7 @@ export async function POST(req: NextRequest) {
         })
 
         // Signal completion
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'done' })}\n\n`))
+        sendDone()
         controller.close()
       } catch (error) {
         trace.fail(error)
