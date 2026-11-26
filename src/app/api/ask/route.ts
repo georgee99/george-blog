@@ -6,6 +6,7 @@ import MiniSearch from 'minisearch'
 import { RagTrace } from '@/lib/rag-analytics/trace'
 import { flushTrace } from '@/lib/rag-analytics/client'
 import { sanitizeQueryText } from '@/lib/rag-analytics/sanitize'
+import { feedbackToken } from '@/lib/rag-analytics/feedback-token'
 
 // Config
 const EMBEDDING_MODEL = 'text-embedding-3-small'
@@ -675,7 +676,11 @@ export async function POST(req: NextRequest) {
         })
 
         // Signal completion
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'done' })}\n\n`))
+        const analyticsKey = process.env.RAG_ANALYTICS_API_KEY
+        const feedback = analyticsKey && process.env.RAG_ANALYTICS_API_URL
+          ? { queryId: trace.queryId, timestamp: trace.timestamp, token: feedbackToken(trace.queryId, trace.timestamp, analyticsKey) }
+          : undefined
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'done', feedback })}\n\n`))
         controller.close()
       } catch (error) {
         trace.fail(error)

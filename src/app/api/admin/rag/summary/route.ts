@@ -11,10 +11,12 @@ export async function GET(req: NextRequest) {
 
   const p = req.nextUrl.searchParams
   const status = p.get('status')
+  const feedback = p.get('feedback')
   const range = resolveRange(p.get('from') ?? undefined, p.get('to') ?? undefined)
   const result = await fetchSummary({
     ...range,
     ...(status === 'success' || status === 'failure' ? { status } : {}),
+    ...(feedback === 'up' || feedback === 'down' ? { feedback } : {}),
   })
 
   return result.ok

@@ -1,5 +1,5 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, PutCommand, QueryCommand } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocumentClient, GetCommand, PutCommand, QueryCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import type { QueryStatus, RagQueryRecord, StoredRecord } from './types';
 import { dayInZone, type AnalyticsTimeZone } from './dates';
 
@@ -80,9 +80,30 @@ export async function getRecord(queryId: string): Promise<RagQueryRecord | null>
   return item ? toPublic(item) : null;
 }
 
+export async function putFeedback(queryId: string, timestamp: string, rating: 'up' | 'down'): Promise<'saved' | 'missing' | 'duplicate'> {
+  const key = { pk: timestamp.slice(0, 10), sk: `${timestamp}#${queryId}` };
+  const existing = await getDocClient().send(new GetCommand({ TableName: getTableName(), Key: key, ConsistentRead: true }));
+  if (!existing.Item || existing.Item.status !== 'success' || existing.Item.expiresAt <= Math.floor(Date.now() / 1000)) return 'missing';
+  try {
+    await getDocClient().send(new UpdateCommand({
+      TableName: getTableName(),
+      Key: key,
+      UpdateExpression: 'SET #feedback = :rating',
+      ConditionExpression: 'attribute_exists(pk) AND attribute_not_exists(#feedback) AND #status = :success AND expiresAt > :now',
+      ExpressionAttributeNames: { '#status': 'status', '#feedback': 'feedback' },
+      ExpressionAttributeValues: { ':rating': rating, ':success': 'success', ':now': Math.floor(Date.now() / 1000) },
+    }));
+    return 'saved';
+  } catch (err) {
+    if ((err as { name?: string }).name === 'ConditionalCheckFailedException') return 'duplicate';
+    throw err;
+  }
+}
+
 export interface Filters {
   status?: QueryStatus;
   model?: string;
+  feedback?: 'up' | 'down';
 }
 
 function filterParams(filters: Filters) {
@@ -98,6 +119,11 @@ function filterParams(filters: Filters) {
     parts.push('#model = :model');
     names['#model'] = 'model';
     values[':model'] = filters.model;
+  }
+  if (filters.feedback) {
+    parts.push('#feedback = :feedback');
+    names['#feedback'] = 'feedback';
+    values[':feedback'] = filters.feedback;
   }
   return {
     FilterExpression: parts.length > 0 ? parts.join(' AND ') : undefined,
@@ -142,6 +168,7 @@ export interface QuerySummaryRow {
   totalMs: number;
   chunkCount: number;
   errorCategory?: string;
+  feedback?: 'up' | 'down';
 }
 
 export interface Cursor {
@@ -181,6 +208,7 @@ export async function listQueries(
           totalMs: i.timings.totalMs,
           chunkCount: i.chunkCount ?? i.chunks.length,
           ...(i.errorCategory ? { errorCategory: i.errorCategory } : {}),
+          ...(i.feedback ? { feedback: i.feedback } : {}),
         });
       }
       startKey = lastKey;
@@ -222,6 +250,8 @@ export interface Summary {
     // How many queries the token and cost totals are based on.
     queriesWithUsage: number;
     queriesWithCost: number;
+    positiveFeedback: number;
+    negativeFeedback: number;
   };
   daily: DailyPoint[];
 }
@@ -255,6 +285,8 @@ export async function summarise(
     estimatedCostUsd: 0,
     queriesWithUsage: 0,
     queriesWithCost: 0,
+    positiveFeedback: 0,
+    negativeFeedback: 0,
   };
   const daily: DailyPoint[] = days.map((day) => ({
       day,
@@ -281,6 +313,8 @@ export async function summarise(
         if (!point || !dayMs) throw new Error('Record outside analytics range');
         point.queries++;
         totals.queries++;
+        if (i.feedback === 'up') totals.positiveFeedback++;
+        if (i.feedback === 'down') totals.negativeFeedback++;
         if (i.status === 'success') totals.success++;
         else {
           totals.failure++;

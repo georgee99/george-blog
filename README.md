@@ -64,6 +64,10 @@ The user's question and generated response are stored after redacting emails, UR
 
 The dashboard displays Sydney time (AEST/AEDT), including date filters and daily totals. The underlying records remain partitioned by UTC day. Deploy the analytics Lambda before the app so the Lambda understands the Sydney date range and response field; records saved before this update cannot show a response.
 
+Visitors can rate a completed answer once, without signing in. The rating is stored on the corresponding analytics record and expires with it; no feedback text or visitor identity is stored. The private dashboard shows ratings, counts for the selected filters, and a negative-rating filter. Older records remain unrated.
+
+The stream's completion event contains a short-lived, response-specific signed feedback capability, not the analytics API key. The server verifies it before forwarding a rating to the private API. A conditional DynamoDB update prevents duplicate ratings even on retries. The public route checks origin and body size and applies a best-effort per-instance rate limit; API Gateway's existing shared usage-plan throttle also applies. These controls limit abuse but anonymous feedback is not proof of a unique person. Feedback can be retried if analytics persistence is delayed or unavailable; it never blocks the answer. Capabilities expire after one hour and become invalid when the analytics key is rotated.
+
 ### Failure isolation
 
 Records are sent to AWS from `after()` once the response stream has finished, with a 3s timeout. Any failure (non-2xx response, timeout, unreachable host) is logged and ignored, and the public search is unaffected. If `RAG_ANALYTICS_API_URL` or `RAG_ANALYTICS_API_KEY` is unset, recording is skipped silently. This was verified against an analytics endpoint that returns HTTP 500, never responds, is unreachable, or is not configured.
@@ -72,6 +76,7 @@ Records are sent to AWS from `after()` once the response stream has finished, wi
 
 ```
 /api/ask (Vercel) --after()--> API Gateway (API key) --> ingest Lambda ---> DynamoDB
+/api/ask/feedback (Vercel) --> API Gateway (API key) --> feedback Lambda --> DynamoDB
 /admin/rag (Vercel, session) --> API Gateway (API key) --> list / detail Lambdas --> DynamoDB
 ```
 
@@ -83,6 +88,7 @@ Infrastructure is defined in `lambda/rag-analytics/serverless.yml` (Serverless F
 | `ingest` Lambda | `POST /rag-analytics/queries`. IAM: `dynamodb:PutItem` on the table only. |
 | `list` Lambda | `GET /rag-analytics/queries` and `GET /rag-analytics/summary`. IAM: `dynamodb:Query` on the table and `byQueryId` index. |
 | `detail` Lambda | `GET /rag-analytics/queries/{queryId}`. Same read-only role as `list`. |
+| `feedback` Lambda | `POST /rag-analytics/feedback`. IAM: `dynamodb:GetItem` and `dynamodb:UpdateItem` on the table only. |
 | API Gateway | Every route has `apiKeyRequired`; usage plan throttles at 10 req/s (burst 20). Each Lambda also re-checks the key (constant-time) so a gateway misconfiguration cannot expose data. |
 | CloudWatch Logs | 30 day retention. Only error messages are logged, never query text. |
 
@@ -100,7 +106,7 @@ The ingest Lambda validates every field (whitelist, type and range checks, 32KB 
 | `AUTH_GOOGLE_SECRET` | yes | Google OAuth client secret |
 | `ADMIN_GOOGLE_SUB` | yes | Stable Google account id (`sub`) of the single administrator |
 | `RAG_ANALYTICS_API_URL` | yes | API base URL, ending `/rag-analytics` (no trailing `/queries`) |
-| `RAG_ANALYTICS_API_KEY` | yes | Shared secret for the analytics API |
+| `RAG_ANALYTICS_API_KEY` | yes | Server-only shared secret for the analytics API and signing feedback capabilities; never expose to the browser |
 | `MODERATION_API_URL` | moderation | Comments service URL ending in `/moderation` |
 | `MODERATION_API_KEY` | moderation | Dedicated server-to-server moderation API key |
 | `RAG_MODEL_PRICING_JSON` | no | Price override, USD per 1M tokens, e.g. `{"gpt-4o-mini":{"inputPerMTok":0.15,"outputPerMTok":0.6}}` |
@@ -131,6 +137,7 @@ The command prints the endpoint URLs. Take the shared prefix up to and including
 Notes:
 
 - After the initial deployment, pushes to `master` that change `lambda/rag-analytics/**` automatically type-check and deploy this service through the `Deploy RAG Analytics Lambda` GitHub workflow. The workflow can also be started manually.
+- Deploy the analytics stack before the app to add the private feedback endpoint and its IAM role. No new environment variables are required; the deployment role must be allowed to create/update the Lambda, API Gateway method and IAM role. Do not deploy as part of review.
 - Configure the GitHub repository secrets `AWS_DEPLOY_ROLE_ARN` (an AWS OIDC role with permission to deploy this service's CloudFormation resources) and `RAG_ANALYTICS_API_KEY` (the same value configured in Vercel). The AWS deployment role secret is also used by the existing Lambda workflow.
 - The table has `DeletionPolicy: Retain`: removing the stack leaves the table (and its data) behind. Delete it manually if you really want it gone.
 - `serverless print` (run via `npx dotenv -e ../../.env.local -- serverless print`) validates the config without deploying.
@@ -208,6 +215,7 @@ Before the first deploy:
 After deploying, on `https://georgeelz.blog`:
 
 - [ ] Public pages and `/ask` work while signed out; `/api/ask` streams an answer
+- [ ] Rate a completed answer while signed out; confirm the rating, counts and filter in the authenticated dashboard, and confirm a second submission is rejected
 - [ ] `/admin` while signed out redirects to the private-area sign-in page; `/api/admin/session` returns 401
 - [ ] Signing in with the admin Google account opens the dashboard; **Sign out** returns you to the sign-in page and `/admin` is protected again
 - [ ] Signing in with any other Google account is rejected (use a second account or an incognito window)

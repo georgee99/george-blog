@@ -2,6 +2,8 @@
 
 import { useState, useRef } from 'react'
 
+type Feedback = { queryId: string; timestamp: string; token: string }
+
 export default function AskPage() {
   const [question, setQuestion] = useState('')
   const [answer, setAnswer] = useState<string | null>(null)
@@ -9,7 +11,13 @@ export default function AskPage() {
   const [loading, setLoading] = useState(false)
   const [progress, setProgress] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [feedback, setFeedback] = useState<Feedback | null>(null)
+  const [rating, setRating] = useState<'up' | 'down' | null>(null)
+  const [feedbackPending, setFeedbackPending] = useState(false)
+  const [feedbackError, setFeedbackError] = useState<string | null>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
+  const feedbackRequest = useRef(0)
+  const feedbackBusy = useRef(false)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -21,6 +29,12 @@ export default function AskPage() {
     setSources([])
     setError(null)
     setProgress(null)
+    setFeedback(null)
+    setRating(null)
+    setFeedbackError(null)
+    feedbackRequest.current++
+    feedbackBusy.current = false
+    setFeedbackPending(false)
 
     try {
       const res = await fetch('/api/ask', {
@@ -48,6 +62,7 @@ export default function AskPage() {
         const reader = res.body?.getReader()
         const decoder = new TextDecoder()
         let accumulatedAnswer = ''
+        let pending = ''
 
         if (!reader) {
           setError('Failed to read response stream.')
@@ -59,8 +74,9 @@ export default function AskPage() {
           const { done, value } = await reader.read()
           if (done) break
 
-          const chunk = decoder.decode(value, { stream: true })
-          const lines = chunk.split('\n')
+          pending += decoder.decode(value, { stream: true })
+          const lines = pending.split('\n')
+          pending = lines.pop() ?? ''
 
           for (const line of lines) {
             if (line.startsWith('data: ')) {
@@ -68,7 +84,7 @@ export default function AskPage() {
                 | { type: 'progress'; message: string }
                 | { type: 'content'; content: string }
                 | { type: 'error'; error: string }
-                | { type: 'done' }
+                | { type: 'done'; feedback?: Feedback }
 
               if (data.type === 'progress') {
                 setProgress(data.message)
@@ -87,6 +103,7 @@ export default function AskPage() {
                 setAnswer(cleaned)
                 setSources(urls)
                 setProgress(null)
+                setFeedback(data.feedback ?? null)
               }
             }
           }
@@ -114,6 +131,34 @@ export default function AskPage() {
     } finally {
       setLoading(false)
       setProgress(null)
+    }
+  }
+
+  async function submitFeedback(value: 'up' | 'down') {
+    if (!feedback || feedbackBusy.current || rating) return
+    feedbackBusy.current = true
+    const request = feedbackRequest.current
+    setFeedbackPending(true)
+    setFeedbackError(null)
+    try {
+      const res = await fetch('/api/ask/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...feedback, rating: value }),
+      })
+      if (request !== feedbackRequest.current) return
+      if (res.ok) setRating(value)
+      else if (res.status === 409) {
+        setFeedback(null)
+        setFeedbackError('Feedback has already been submitted for this answer.')
+      } else setFeedbackError('Could not send feedback. Please try again.')
+    } catch {
+      if (request === feedbackRequest.current) setFeedbackError('Could not send feedback. Please try again.')
+    } finally {
+      if (request === feedbackRequest.current) {
+        feedbackBusy.current = false
+        setFeedbackPending(false)
+      }
     }
   }
 
@@ -223,6 +268,19 @@ export default function AskPage() {
           <div className="space-y-3 text-sm leading-relaxed text-neutral-800 dark:text-neutral-200 whitespace-pre-wrap">
             {answer}
           </div>
+        </div>
+      )}
+
+      {answer && !loading && (feedback || feedbackError) && (
+        <div className="space-y-2 text-sm" aria-live="polite">
+          {rating ? <p>Thanks for your feedback!</p> : feedback && (
+            <div className="flex items-center gap-3">
+              <span>Was this answer helpful?</span>
+              <button type="button" aria-label="Helpful" disabled={feedbackPending} onClick={() => submitFeedback('up')} className="border border-neutral-300 px-2 py-1 disabled:opacity-40 dark:border-neutral-700">👍</button>
+              <button type="button" aria-label="Not helpful" disabled={feedbackPending} onClick={() => submitFeedback('down')} className="border border-neutral-300 px-2 py-1 disabled:opacity-40 dark:border-neutral-700">👎</button>
+            </div>
+          )}
+          {feedbackError && <p className="text-neutral-500">{feedbackError}</p>}
         </div>
       )}
 
