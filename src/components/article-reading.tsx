@@ -21,8 +21,9 @@ export default function ArticleReading({ headings, children }: { headings: Artic
         : 0;
       if (barRef.current) barRef.current.style.transform = `scaleX(${progress})`;
       let current = "";
+      const headingOffset = elements[0] ? Math.max(100, parseFloat(getComputedStyle(elements[0]).scrollMarginTop) || 0) : 100;
       for (const element of elements) {
-        if (element.getBoundingClientRect().top <= 100) current = element.id;
+        if (element.getBoundingClientRect().top <= headingOffset) current = element.id;
         else break;
       }
       setActive(current);
