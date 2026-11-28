@@ -28,7 +28,13 @@ body {
 }
 
 .article-body :is(h1, h2, h3, h4, h5, h6) {
-  scroll-margin-top: 5rem;
+  scroll-margin-top: 8rem;
+}
+
+@media (min-width: 40rem) {
+  .article-body :is(h1, h2, h3, h4, h5, h6) {
+    scroll-margin-top: 5rem;
+  }
 }
 
 .article-body pre {
