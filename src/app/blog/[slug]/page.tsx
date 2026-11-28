@@ -1,13 +1,16 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { MDXRemote } from "next-mdx-remote/rsc";
+import Link from "next/link";
+import { compileMDX } from "next-mdx-remote/rsc";
 import remarkGfm from "remark-gfm";
-import { getPost, getPostSlugs } from "@/lib/posts";
+import { getAllPosts, getPost, getPostSlugs, getRelatedPosts } from "@/lib/posts";
+import { articleHeadings, type ArticleHeading } from "@/lib/article-headings";
 import { siteConfig } from "@/lib/config";
 import { mdxComponents } from "@/components/mdx-components";
 import { formatDate } from "@/lib/utils";
 import CommentsSection from "@/components/comments-section";
 import SubscribeForm from "@/components/subscribe-form";
+import ArticleReading from "@/components/article-reading";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -67,6 +70,14 @@ export default async function BlogPostPage({ params }: Props) {
     notFound();
   }
 
+  const headings: ArticleHeading[] = [];
+  const { content } = await compileMDX({
+    source: post.source,
+    components: mdxComponents,
+    options: { mdxOptions: { remarkPlugins: [remarkGfm, articleHeadings(headings)] } },
+  });
+  const relatedPosts = getRelatedPosts(post.meta, getAllPosts());
+
   const articleUrl = new URL(`/blog/${slug}`, siteConfig.url).toString();
   const imageUrl = new URL(
     post.meta.image ?? siteConfig.defaultImage,
@@ -117,17 +128,23 @@ export default async function BlogPostPage({ params }: Props) {
         </time>
       </header>
 
-      <div className="prose prose-neutral max-w-none dark:prose-invert">
-        <MDXRemote
-          source={post.source}
-          components={mdxComponents}
-          options={{
-            mdxOptions: {
-              remarkPlugins: [remarkGfm],
-            },
-          }}
-        />
-      </div>
+      <ArticleReading headings={headings}>{content}</ArticleReading>
+
+      {relatedPosts.length > 0 && (
+        <section aria-label="Related articles" className="mt-12 border-t border-neutral-200 pt-8 dark:border-neutral-800">
+          <h2 className="mb-4 text-lg font-semibold">Related articles</h2>
+          <ul className="space-y-4">
+            {relatedPosts.map((related) => (
+              <li key={related.slug}>
+                <Link href={`/blog/${related.slug}`} className="group flex items-baseline justify-between gap-4 rounded focus-visible:outline-2 focus-visible:outline-offset-2">
+                  <span className="text-neutral-900 underline-offset-4 decoration-neutral-300 group-hover:underline dark:text-neutral-100 dark:decoration-neutral-600">{related.title}</span>
+                  <time className="shrink-0 text-sm text-neutral-400" dateTime={related.date}>{formatDate(related.date)}</time>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <CommentsSection postSlug={slug} />
       <SubscribeForm source="blogpage"/>
