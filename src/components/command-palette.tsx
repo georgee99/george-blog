@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import { navigationCommands, searchCommands, type CommandItem } from "@/lib/command-search";
 
 const subscribe = () => () => {};
-const getShortcut = () => /Mac|iPhone|iPad|iPod/i.test(navigator.platform) ? "⌘ K" : "Ctrl K";
-const getServerShortcut = () => "Ctrl K";
+const getShortcut = () => /Mac|iPhone|iPad|iPod/i.test(navigator.platform) ? "⌘ + K" : "Ctrl + K";
+const getServerShortcut = () => "Ctrl + K";
 
 export function CommandPalette() {
   const [open, setOpen] = useState(false);
@@ -101,10 +101,10 @@ export function CommandPalette() {
         onClick={show}
         aria-label={`Search pages and articles (${shortcut})`}
         aria-haspopup="dialog"
-        className="flex min-h-10 items-center gap-1 rounded border border-neutral-300 px-2 text-sm text-neutral-600 hover:text-neutral-900 focus-visible:outline-2 focus-visible:outline-offset-2 dark:border-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-100"
+        title={shortcut}
+        className="hidden min-h-10 items-center rounded border border-neutral-300 px-2 text-sm text-neutral-600 hover:text-neutral-900 focus-visible:outline-2 focus-visible:outline-offset-2 sm:flex dark:border-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-100"
       >
         <span>Search</span>
-        <kbd className="hidden text-xs text-neutral-400 sm:inline">{shortcut}</kbd>
       </button>
       {open && (
         <dialog
